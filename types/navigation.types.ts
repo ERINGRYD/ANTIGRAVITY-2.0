@@ -1,0 +1,2 @@
+export type ActiveView = 'main' | 'combat' | 'coliseum' | 'journey' | 'store' | 'ranking' | 'profile' | 'statistics' | 'settings' | 'details' | 'management' | 'goalsManagement' | 'timeStats' | 'battleStats' | 'history' | 'achievements' | 'notifications' | 'battleHistory' | 'prepareArena' | 'battleQuestion' | 'sounds';
+export type ActiveModal = 'topicManager' | 'addTopic' | 'focusMode' | 'battleSelection' | 'importJson' | null;

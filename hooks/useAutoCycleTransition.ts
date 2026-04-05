@@ -27,7 +27,7 @@ export interface AutoCycleTransitionState {
 interface UseAutoCycleTransitionProps {
   isAutoCycle: boolean;
   isPomodoroComplete: boolean;
-  activeTheme: Theme;
+  activeTheme: Theme | null;
   onAdvance: () => void;
   onTransitionCancelled: () => void;
 }
@@ -58,7 +58,7 @@ export const useAutoCycleTransition = ({
   const triggerTransition = useCallback(() => {
     if (!isAutoCycle) return;
 
-    const isComplete = isThemeCompleted(activeTheme);
+    const isComplete = activeTheme ? isThemeCompleted(activeTheme) : false;
     
     setState(prev => ({
       ...prev,

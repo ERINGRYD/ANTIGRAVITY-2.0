@@ -1,0 +1,36 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and all data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID" },
+        "email": { "type": "string", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "xp": { "type": "number", "description": "Experience points" },
+        "level": { "type": "number", "description": "Current level" },
+        "dailyStreak": { "type": "number", "description": "Consecutive days studied" },
+        "lastStudyDate": { "type": "string", "description": "ISO date of last study session" },
+        "hp": { "type": "number", "description": "Health points" },
+        "stamina": { "type": "number", "description": "Stamina points" },
+        "pomodoroSettings": { "type": "object" },
+        "subjects": { "type": "string", "description": "JSON stringified subjects array" },
+        "goals": { "type": "string", "description": "JSON stringified goals array" },
+        "questions": { "type": "string", "description": "JSON stringified questions array" },
+        "studyHistory": { "type": "string", "description": "JSON stringified study history array" },
+        "unlockedAchievements": { "type": "string", "description": "JSON stringified achievements array" },
+        "preferences": { "type": "string", "description": "JSON stringified preferences" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile and all data"
+    }
+  }
+}

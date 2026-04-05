@@ -33,6 +33,7 @@ const ManageQuestionsView: React.FC<ManageQuestionsViewProps> = ({
 
   const confirmDelete = () => {
     if (questionToDelete) {
+      console.log('Confirming delete for question:', questionToDelete);
       onDeleteQuestion(questionToDelete);
       setQuestionToDelete(null);
     }

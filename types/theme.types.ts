@@ -1,3 +1,5 @@
+import { KnowledgeLevel } from '../utils/priorityUtils';
+
 /**
  * Theme Data Model Definition
  * 
@@ -34,6 +36,8 @@ export interface Theme {
   /** Target study time in minutes to consider this theme "learned" via time method */
   goalTime: number;            
   
+  priority: 1 | 2 | 3 | 4 | 5; // Star priority inherited from parent subject on creation
+  
   /** Total minutes studied across ALL history. Does not reset on cycle rotation. */
   accumulatedTime: number;     
   
@@ -52,6 +56,9 @@ export interface Theme {
   /** Optional breakdown of the theme. If empty, only 'time' or manual completion applies. */
   subtopics: Subtopic[];       
   
+  knowledgeLevel?: KnowledgeLevel;
+  description?: string;
+
   createdAt: string;           // ISO 8601 date string
   updatedAt: string;           // ISO 8601 date string
 }

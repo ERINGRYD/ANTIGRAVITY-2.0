@@ -3,7 +3,6 @@ import React, { useState, useMemo, forwardRef, useImperativeHandle, useEffect } 
 import { Subject, Goal, Tab, Topic, Question } from '../types';
 import { useApp } from '../contexts/AppContext';
 import AddQuestionView from './AddQuestionView';
-import AddFlashcardView from './AddFlashcardView';
 import QuestionBankView from './QuestionBankView';
 import ManageQuestionsView from './ManageQuestionsView';
 import EditQuestionView from './EditQuestionView';
@@ -41,7 +40,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
   const { isDarkMode, questions, setQuestions, studyHistory } = useApp();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'battle' | 'add_question' | 'add_flashcard' | 'question_bank' | 'manage_questions' | 'edit_question' | 'combat'>('battle');
+  const [activeView, setActiveView] = useState<'battle' | 'add_question' | 'question_bank' | 'manage_questions' | 'edit_question' | 'combat'>('battle');
   const [isSelectingTopic, setIsSelectingTopic] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -50,7 +49,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
   const [questionToEdit, setQuestionToEdit] = useState<Question | undefined>(undefined);
 
   useImperativeHandle(ref, () => ({
-    handleAddQuestion: () => handleAddClick('add_question'),
+    handleAddQuestion: () => handleAddClick(),
     handleOpenQuestionBank: () => setActiveView('question_bank'),
   }));
 
@@ -77,7 +76,6 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
       options: newQuestionData.options,
       correctAnswerMultipla: newQuestionData.correctAnswerMultipla,
       correctAnswerCertoErrado: newQuestionData.correctAnswerCertoErrado,
-      flashcardAnswer: newQuestionData.flashcardAnswer,
       explanation: newQuestionData.explanation,
       tags: newQuestionData.tags,
     };
@@ -90,40 +88,59 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
   };
 
   const currentConfidence = useMemo(() => {
-    const defaultStats = { certeza: '0%', duvida: '0%', incerteza: '0%', falta: '0%' };
+    const defaultStats = { 
+      certeza: { percent: '0%', count: 0 }, 
+      duvida: { percent: '0%', count: 0 }, 
+      incerteza: { percent: '0%', count: 0 }, 
+      falta: { percent: '0%', count: 0 } 
+    };
     if (!studyHistory || studyHistory.length === 0) return defaultStats;
 
+    const subjectIds = subjects.map(s => s.id);
     const relevantSessions = hoveredSubjectId 
       ? studyHistory.filter(s => s.subjectId === hoveredSubjectId)
-      : studyHistory;
+      : studyHistory.filter(s => subjectIds.includes(s.subjectId));
 
     if (relevantSessions.length === 0) return defaultStats;
 
-    const total = relevantSessions.length;
     const stats = relevantSessions.reduce((acc, s) => {
-      acc.certeza += s.confidenceStats?.certeza || 0;
-      acc.duvida += s.confidenceStats?.duvida || 0;
-      acc.incerteza += s.confidenceStats?.chute || 0;
+      // Calculate counts from percentages if they are stored as percentages
+      // In BattleQuestionView, they are stored as Math.round((count / total) * 100)
+      const qTotal = s.questionsCompleted || 0;
+      acc.certeza += Math.round(qTotal * ((s.confidenceStats?.certeza || 0) / 100));
+      acc.duvida += Math.round(qTotal * ((s.confidenceStats?.duvida || 0) / 100));
+      acc.incerteza += Math.round(qTotal * ((s.confidenceStats?.chute || 0) / 100));
+      acc.totalQuestions += qTotal;
       return acc;
-    }, { certeza: 0, duvida: 0, incerteza: 0 });
+    }, { certeza: 0, duvida: 0, incerteza: 0, totalQuestions: 0 });
 
-    const avgCerteza = Math.round(stats.certeza / total);
-    const avgDuvida = Math.round(stats.duvida / total);
-    const avgIncerteza = Math.round(stats.incerteza / total);
+    const total = stats.totalQuestions;
+    
+    if (total === 0) return defaultStats;
+
+    const avgCerteza = Math.round((stats.certeza / total) * 100);
+    const avgDuvida = Math.round((stats.duvida / total) * 100);
+    const avgIncerteza = Math.round((stats.incerteza / total) * 100);
     const avgFalta = Math.max(0, 100 - (avgCerteza + avgDuvida + avgIncerteza));
+    const countFalta = Math.max(0, total - (stats.certeza + stats.duvida + stats.incerteza));
 
     return {
-      certeza: `${avgCerteza}%`,
-      duvida: `${avgDuvida}%`,
-      incerteza: `${avgIncerteza}%`,
-      falta: `${avgFalta}%`
+      certeza: { percent: `${avgCerteza}%`, count: stats.certeza },
+      duvida: { percent: `${avgDuvida}%`, count: stats.duvida },
+      incerteza: { percent: `${avgIncerteza}%`, count: stats.incerteza },
+      falta: { percent: `${avgFalta}%`, count: countFalta }
     };
   }, [hoveredSubjectId, studyHistory]);
 
+  const totalCycleMinutes = useMemo(() => subjects.reduce((acc, s) => acc + s.totalMinutes, 0), [subjects]);
+  const totalQuestions = useMemo(() => 
+    subjects.reduce((acc, s) => 
+      acc + s.topics.reduce((tAcc, t) => tAcc + (t.totalQuestions || 0), 0)
+    , 0)
+  , [subjects]);
+
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
-  const segmentRatio = 1 / Math.max(subjects.length, 1);
-  const segmentValue = segmentRatio * circumference;
 
   const handleDragStart = (index: number) => setDraggedIndex(index);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -137,15 +154,12 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
     setDraggedIndex(null);
   };
 
-  const handleAddClick = (type: 'add_question' | 'add_flashcard') => {
-    setActiveView(type);
-    if (type !== 'add_question') {
-      setIsSelectingTopic(true);
-    }
+  const handleAddClick = () => {
+    setActiveView('add_question');
   };
 
   if (activeView === 'combat') {
-    return <CombatView onBack={() => setActiveView('battle')} subjectId={selectedSubject?.id} onBattleSelectionClick={onBattleSelectionClick} />;
+    return <CombatView onBack={() => setActiveView('battle')} subjectId={selectedSubject?.id} />;
   }
 
   if (activeView === 'question_bank') {
@@ -210,17 +224,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
     );
   }
 
-  if (activeView === 'add_flashcard' && selectedTopic && selectedSubject) {
-    return (
-      <AddFlashcardView
-        topic={selectedTopic}
-        subjectName={selectedSubject.name}
-        subjectColor={selectedSubject.color}
-        onBack={() => { setActiveView('battle'); setSelectedTopic(null); }}
-        onSave={() => setActiveView('battle')}
-      />
-    );
-  }
+
 
   return (
     <div className="flex flex-col animate-in fade-in slide-in-from-right duration-300 min-h-screen bg-[#F8FAFC] dark:bg-slate-950">
@@ -246,7 +250,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
             <span className="material-icons-round text-blue-500 text-3xl">info</span>
             <div className="flex-1">
               <p className="text-sm font-bold text-blue-900 dark:text-blue-100">Nenhuma questão cadastrada</p>
-              <p className="text-xs text-blue-700 dark:text-blue-300">Adicione questões ou flashcards para começar a treinar no campo de batalha.</p>
+              <p className="text-xs text-blue-700 dark:text-blue-300">Adicione questões para começar a treinar no campo de batalha.</p>
             </div>
             <button 
               onClick={() => setActiveView('add_question')}
@@ -264,11 +268,21 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
                 <circle cx="50" cy="50" r={radius} fill="transparent" stroke={isDarkMode ? "#1E293B" : "#F1F5F9"} strokeWidth="16" />
                 {subjects.map((s, idx) => {
                   const isHovered = hoveredSubjectId === s.id;
-                  const currentOffset = -idx * segmentValue;
-                  const midAnglePercent = (idx * segmentRatio) + (segmentRatio / 2);
+                  const proportion = s.totalMinutes / (totalCycleMinutes || 1);
+                  const segmentValue = proportion * circumference;
+                  
+                  // Calculate cumulative offset
+                  let currentOffset = 0;
+                  for (let i = 0; i < idx; i++) {
+                    currentOffset -= (subjects[i].totalMinutes / (totalCycleMinutes || 1)) * circumference;
+                  }
+
+                  const startPercent = subjects.slice(0, idx).reduce((acc, curr) => acc + (curr.totalMinutes / (totalCycleMinutes || 1)), 0);
+                  const midAnglePercent = startPercent + (proportion / 2);
                   const midAngleRad = (midAnglePercent * 360) * (Math.PI / 180);
                   const textX = 50 + radius * Math.cos(midAngleRad);
                   const textY = 50 + radius * Math.sin(midAngleRad);
+                  
                   return (
                     <g 
                       key={s.id} 
@@ -291,7 +305,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
                         x={textX} y={textY} 
                         textAnchor="middle" dominantBaseline="middle" 
                         className={`font-black text-[5px] fill-white pointer-events-none select-none transition-all ${isHovered ? 'scale-125' : ''}`}
-                        transform={`rotate(90 ${textX} ${textY})`}
+                        transform={`rotate(${midAnglePercent * 360 + 90} ${textX} ${textY})`}
                       >
                         {s.shortName}
                       </text>
@@ -301,7 +315,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
                 <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums">
-                  {hoveredSubjectId ? subjects.find(s => s.id === hoveredSubjectId)?.studiedMinutes : '412'}
+                  {hoveredSubjectId ? subjects.find(s => s.id === hoveredSubjectId)?.studiedMinutes : totalQuestions}
                 </span>
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mt-3">
                   {hoveredSubjectId ? 'MINUTOS' : 'QUESTÕES'}
@@ -312,10 +326,10 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
             <div className="flex flex-col w-full lg:max-w-lg gap-5">
               <h3 className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.25em] px-1">Distribuição de Confiança</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ConfidenceCard percentage={currentConfidence.certeza} label="CERTEZA" icon="check_circle" color="text-[#10B981]" />
-                <ConfidenceCard percentage={currentConfidence.duvida} label="DÚVIDA" icon="warning" color="text-[#F59E0B]" />
-                <ConfidenceCard percentage={currentConfidence.incerteza} label="INCERTEZA" icon="radio_button_checked" color="text-[#3B82F6]" />
-                <ConfidenceCard percentage={currentConfidence.falta} label="FALTA" icon="help" color="text-[#EF4444]" />
+                <ConfidenceCard percentage={currentConfidence.certeza.percent} count={currentConfidence.certeza.count} label="CERTEZA" icon="check_circle" color="text-[#10B981]" />
+                <ConfidenceCard percentage={currentConfidence.duvida.percent} count={currentConfidence.duvida.count} label="DÚVIDA" icon="warning" color="text-[#F59E0B]" />
+                <ConfidenceCard percentage={currentConfidence.incerteza.percent} count={currentConfidence.incerteza.count} label="INCERTEZA" icon="radio_button_checked" color="text-[#3B82F6]" />
+                <ConfidenceCard percentage={currentConfidence.falta.percent} count={currentConfidence.falta.count} label="FALTA" icon="help" color="text-[#EF4444]" />
               </div>
             </div>
           </div>
@@ -369,13 +383,16 @@ const HeaderActionIcon: React.FC<{ icon: string, color?: string, className?: str
   </button>
 );
 
-const ConfidenceCard: React.FC<{ percentage: string, label: string, icon: string, color: string }> = ({ percentage, label, icon, color }) => (
+const ConfidenceCard: React.FC<{ percentage: string, count: number, label: string, icon: string, color: string }> = ({ percentage, count, label, icon, color }) => (
   <div className="bg-white dark:bg-slate-900 rounded-[24px] p-5 border border-slate-100 dark:border-slate-800 flex items-center justify-between transition-all hover:shadow-lg group">
     <div className="flex flex-col">
-      <span className={`text-2xl font-black mb-0.5 ${color}`}>{percentage}</span>
-      <span className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{label}</span>
+      <div className="flex items-center gap-2 mb-1">
+        <span className={`text-2xl font-black ${color}`}>{percentage}</span>
+        <span className="text-xs font-bold text-slate-400 dark:text-slate-500">({count})</span>
+      </div>
+      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{label}</span>
     </div>
-    <span className={`material-icons-round text-2xl ${color}`}>{icon}</span>
+    <span className={`material-symbols-outlined text-3xl ${color} filled`}>{icon}</span>
   </div>
 );
 

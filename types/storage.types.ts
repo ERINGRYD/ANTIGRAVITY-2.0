@@ -1,5 +1,7 @@
 import { Topic } from '../types';
 
+import { KnowledgeLevel } from '../utils/priorityUtils';
+
 export interface PomodoroSettings {
   focusTime: number;
   shortBreak: number;
@@ -20,7 +22,7 @@ export interface UserStats {
   level: number;
   dailyStreak: number;
   lastStudyDate: string | null;
-  unlockedAchievements: string[];
+  unlockedAchievements: { id: string, unlockedAt: string }[];
   hp: number;
   stamina: number;
 }
@@ -70,6 +72,8 @@ export interface Subject {
   studiedMinutes: number;
   totalMinutes: number; // Necessário para cálculos de progresso
   topics: Topic[];
+  priority?: number;
+  knowledgeLevel?: KnowledgeLevel;
 }
 
 export interface Goal {

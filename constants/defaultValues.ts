@@ -26,26 +26,9 @@ export const DEFAULT_USER_STATS: UserStats = {
   stamina: 100
 };
 
-export const DEFAULT_SUBJECTS: Subject[] = INITIAL_SUBJECTS;
+export const DEFAULT_SUBJECTS: Subject[] = [];
 
-export const DEFAULT_GOALS: Goal[] = [
-  { 
-    id: '1', 
-    title: 'Completar 20h de estudo', 
-    targetMinutes: 1200, 
-    currentMinutes: 0, 
-    isCompleted: false, 
-    weekStart: new Date().toISOString() 
-  },
-  { 
-    id: '2', 
-    title: 'Revisar Logaritmos', 
-    targetMinutes: 60, 
-    currentMinutes: 0, 
-    isCompleted: false, 
-    weekStart: new Date().toISOString() 
-  }
-];
+export const DEFAULT_GOALS: Goal[] = [];
 
 export const DEFAULT_ACHIEVEMENTS: string[] = [];
 

@@ -6,7 +6,7 @@ import { useApp } from '../contexts/AppContext';
 
 interface BattleSelectionHUDProps {
   onClose: () => void;
-  onStartBattle?: (room: string, mode: string, questionLimit: number, mixSubjects: boolean, selectedSubjectIds?: string[], selectedTopicIds?: string[]) => void;
+  onStartBattle?: (room: string, mode: string, questionLimit: number, mixSubjects: boolean, selectedSubjectIds?: string[], selectedTopicIds?: string[], sessionTimeLimit?: number, distributionMode?: string) => void;
 }
 
 const BattleSelectionHUD: React.FC<BattleSelectionHUDProps> = ({ onClose, onStartBattle }) => {
@@ -287,7 +287,7 @@ const BattleSelectionHUD: React.FC<BattleSelectionHUDProps> = ({ onClose, onStar
             disabled={!mixSubjects && selectedSubjectIds.length === 0 && selectedTopicIds.length === 0}
             onClick={() => {
               if (onStartBattle) {
-                onStartBattle(selectedRoom, selectedMode, questionLimit, mixSubjects, selectedSubjectIds, selectedTopicIds);
+                onStartBattle(selectedRoom, selectedMode, questionLimit, mixSubjects, selectedSubjectIds, selectedTopicIds, 0, 'aleatorio');
               }
               onClose();
             }}

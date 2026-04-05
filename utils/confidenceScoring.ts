@@ -2,12 +2,12 @@ export type ConfidenceLevel = 'certain' | 'doubtful' | 'guess';
 export type Room = 'reconhecimento' | 'critica' | 'alerta' | 'vencidos';
 
 const WEIGHT_MATRIX: Record<string, number> = {
-  'correct-certain':   1.0,  // confirmed mastery
-  'correct-doubtful':  0.6,  // partial knowledge
-  'correct-guess':     0.2,  // luck — does not indicate mastery
-  'wrong-certain':    -0.5,  // dangerous misconception — penalized
-  'wrong-doubtful':    0.0,  // expected gap — neutral
-  'wrong-guess':       0.1,  // expected result — near neutral
+  'correct-certain':   1.0,   // 100: confirmed mastery
+  'correct-doubtful':  0.75,  // 75: partial knowledge
+  'correct-guess':     0.5,   // 50: luck — does not indicate mastery
+  'wrong-certain':    -0.25,  // -25: dangerous misconception — penalized
+  'wrong-doubtful':    0.0,   // 0: expected gap — neutral
+  'wrong-guess':       0.25,  // 25: expected result — near neutral
 };
 
 export function getAttemptWeight(

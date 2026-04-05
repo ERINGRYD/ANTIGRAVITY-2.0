@@ -17,6 +17,7 @@ import React, { useMemo } from 'react';
 import { Subject, Tab } from '../types';
 import SubjectCard from './SubjectCard';
 import EmptyState from './EmptyState';
+import { calculateAllCyclePercents, calculateCombinedWeight, KnowledgeLevel } from '../utils/priorityUtils';
 
 interface CycleViewProps {
   subjects: Subject[];
@@ -31,6 +32,8 @@ interface CycleViewProps {
   onDragEnd: () => void;
   draggedSubjectIndex: number | null;
   dragOverSubjectIndex: number | null;
+  onPriorityChange?: (subjectId: string, priority: number) => void;
+  onLevelChange?: (subjectId: string, level: KnowledgeLevel) => void;
 }
 
 const CycleView: React.FC<CycleViewProps> = ({
@@ -45,7 +48,9 @@ const CycleView: React.FC<CycleViewProps> = ({
   onDragEnter,
   onDragEnd,
   draggedSubjectIndex,
-  dragOverSubjectIndex
+  dragOverSubjectIndex,
+  onPriorityChange,
+  onLevelChange
 }) => {
   
   // Calculate Stats
@@ -63,9 +68,22 @@ const CycleView: React.FC<CycleViewProps> = ({
   // Donut Chart Logic
   const radius = 38; 
   const circumference = 2 * Math.PI * radius;
-  const totalPlanned = subjects.reduce((acc, s) => acc + Math.max(s.totalMinutes, 1), 0);
+  
+  // Calcula os pesos para as proporções do ciclo
+  const subjectsWithWeights = useMemo(() => subjects.map(s => ({
+    ...s,
+    weight: calculateCombinedWeight(s.priority || 3, s.knowledgeLevel || 'intermediario')
+  })), [subjects]);
+
+  const totalWeight = useMemo(() => subjectsWithWeights.reduce((acc, s) => acc + s.weight, 0), [subjectsWithWeights]);
+  
   let accumulatedOffset = 0;
   let accumulatedRatio = 0;
+
+  // Calculate cycle percentages
+  const cyclePercents = useMemo(() => {
+    return calculateAllCyclePercents(subjects as any);
+  }, [subjects]);
 
   return (
     <main className="px-6 py-8 flex flex-col gap-8 animate-in fade-in duration-300 pb-32 max-w-7xl mx-auto w-full">
@@ -78,9 +96,10 @@ const CycleView: React.FC<CycleViewProps> = ({
             <circle cx="50" cy="50" r={radius} fill="transparent" stroke="#f1f5f9" strokeWidth="16" className="dark:stroke-slate-800" />
             
             {/* Segments */}
-            {subjects.map((subject) => {
-              const plannedTime = Math.max(subject.totalMinutes, 1);
-              const ratio = plannedTime / totalPlanned;
+            {subjectsWithWeights.map((subject) => {
+              const ratio = totalWeight > 0 ? subject.weight / totalWeight : 0;
+              if (ratio === 0) return null;
+
               const segmentValue = ratio * circumference;
               const currentOffset = accumulatedOffset;
               
@@ -187,6 +206,9 @@ const CycleView: React.FC<CycleViewProps> = ({
                 isDropTarget={isEditMode && dragOverSubjectIndex === index}
                 isEditMode={isEditMode}
                 cardIndex={index}
+                cyclePercent={cyclePercents[subject.id] || 0}
+                onPriorityChange={onPriorityChange}
+                onLevelChange={onLevelChange}
               />
 
               {/* Auto-Cycle Connectors (Layer 2) */}
@@ -253,6 +275,14 @@ const CycleView: React.FC<CycleViewProps> = ({
           </button>
         </div>
       )}
+
+      {/* Context Footer Note */}
+      <div className="flex items-start gap-3 p-4 bg-slate-100/50 dark:bg-slate-900/50 rounded-xl mt-6 border border-dashed border-slate-200 dark:border-slate-800">
+        <span className="material-symbols-outlined text-slate-400 text-sm mt-0.5">info</span>
+        <p className="text-xs text-slate-500 italic leading-relaxed">
+          Seu nível influencia o peso da matéria no cronograma. Matérias de nível "Iniciante" receberão mais blocos de estudo.
+        </p>
+      </div>
     </main>
   );
 };

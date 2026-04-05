@@ -50,7 +50,7 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
     return Math.round(totalAccuracy / sessionsWithQuestions.length);
   }, [studyHistory]);
 
-  const focus = 65; // Mock from screenshot
+  const focus = 65; // Valor de foco padrão
   const hp = userStats?.hp ?? 1000;
   const stamina = userStats?.stamina ?? 100;
   const currentXp = userStats?.xp ?? 0;
@@ -79,6 +79,14 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
   // Load rooms from localStorage
   useEffect(() => {
     const loadRooms = async () => {
+      console.log('CombatView: Loading rooms...', { 
+        subjectsCount: subjects.length, 
+        questionsCount: questions.length,
+        subjectIdFilter: subjectId,
+        firstFewQuestions: questions.slice(0, 3).map(q => ({ id: q.id, subject: q.subject, topic: q.topic })),
+        firstFewSubjects: subjects.slice(0, 2).map(s => ({ id: s.id, name: s.name, topicsCount: s.topics.length }))
+      });
+
       // Generate enemies from subjects, filtering only topics that have questions
       const filteredSubjects = subjectId 
         ? subjects.filter(s => s.id === subjectId)
@@ -86,7 +94,10 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
 
       const generatedEnemies = filteredSubjects.flatMap(subject => 
         subject.topics
-          .filter(topic => questions.some(q => q.topic === topic.id))
+          .filter(topic => {
+            const hasQuestions = questions.some(q => q.topic === topic.id);
+            return hasQuestions;
+          })
           .map(topic => ({
             id: topic.id,
             subject: subject.name,
@@ -99,6 +110,8 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
             locked: false,
           }))
       );
+
+      console.log('CombatView: Generated enemies count:', generatedEnemies.length);
 
       const archivedEnemies = getArchivedEnemies();
       const now = new Date();

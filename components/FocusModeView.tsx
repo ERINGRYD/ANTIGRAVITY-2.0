@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Subject, Tab, PomodoroSettings, StudySession } from '../types';
+import { Theme } from '../types/theme.types';
+import { SubjectCycleState } from '../types/subjectCycle.types';
 import { useApp } from '../contexts/AppContext';
 import BottomNav from './BottomNav';
 import PomodoroSettingsView from './PomodoroSettingsView';
@@ -8,7 +10,11 @@ import StrictModeActivationView from './StrictModeActivationView';
 import SubjectSelectorOverlay from './SubjectSelectorOverlay';
 import MissionReportView, { MissionReportData } from './MissionReportView';
 import SideNavigation from './SideNavigation';
+import TransitionOverlay from './TransitionOverlay';
+import DecisionPrompt from './DecisionPrompt';
 import { useStudyTimer } from '../hooks/useStudyTimer';
+import { useAutoCycleTransition } from '../hooks/useAutoCycleTransition';
+import { useManualCycleDecision } from '../hooks/useManualCycleDecision';
 import { subjectToThemes, subjectToCycleState } from '../adapters/subjectToTheme';
 
 import { audioService, AmbientSoundType, AlertSoundType } from '../utils/audioService';
@@ -16,6 +22,7 @@ import { audioService, AmbientSoundType, AlertSoundType } from '../utils/audioSe
 interface FocusModeViewProps {
   subjects: Subject[];
   initialSubjectId?: string;
+  initialTopicId?: string;
   isAutoCycle?: boolean;
   pomodoroSettings: PomodoroSettings;
   setPomodoroSettings: (settings: PomodoroSettings) => void;
@@ -42,6 +49,7 @@ type TimerMode = 'focus' | 'shortBreak' | 'longBreak' | 'manualPause';
 const FocusModeView: React.FC<FocusModeViewProps> = ({ 
   subjects, 
   initialSubjectId, 
+  initialTopicId,
   isAutoCycle, 
   pomodoroSettings,
   setPomodoroSettings,
@@ -50,7 +58,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
   onRecordSession,
   studyHistory = []
 }) => {
-  const { isDarkMode } = useApp();
+  const { isDarkMode, setSubjects } = useApp();
   const [isActive, setIsActive] = useState(true);
   const [timerMode, setTimerMode] = useState<TimerMode>('focus');
   const [secondsLeft, setSecondsLeft] = useState(pomodoroSettings.focusTime * 60);
@@ -81,8 +89,17 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
     return idx === -1 ? 0 : idx;
   }, [subjects, initialSubjectId]);
 
+  const initialTopicIdx = useMemo(() => {
+    if (initialIdx !== -1 && initialTopicId) {
+      const subject = subjects[initialIdx];
+      const tIdx = subject.topics.findIndex(t => t.id === initialTopicId);
+      return tIdx !== -1 ? tIdx : 0;
+    }
+    return 0;
+  }, [subjects, initialIdx, initialTopicId]);
+
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState<number>(initialIdx);
-  const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(0);
+  const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(initialTopicIdx);
   
   const currentSubject = subjects[currentSubjectIndex];
   const nextSubjectIndex = (currentSubjectIndex + 1) % subjects.length;
@@ -90,31 +107,103 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
   const currentTopic = currentSubject?.topics[currentTopicIndex];
   const currentTopicName = currentTopic?.name || 'Geral';
 
+  const defaultTheme: Theme = useMemo(() => ({
+    id: 'default',
+    subjectId: 'default',
+    name: 'Default',
+    order: 0,
+    goalTime: 60,
+    priority: 3,
+    accumulatedTime: 0,
+    isCompleted: false,
+    completionSource: null,
+    subtopics: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }), []);
+
+  const defaultCycleState: SubjectCycleState = useMemo(() => ({
+    subjectId: 'default',
+    rotationIndex: 1,
+    cycleGoalTime: 60,
+    currentCycleTime: 0,
+    excessTime: 0,
+    activeThemeId: null,
+    isRotationCompleted: false,
+    startedAt: null,
+    completedAt: null,
+  }), []);
+
   // Inside the component, derive the new model from the current subject:
-  const activeTheme = currentSubject ? (subjectToThemes(currentSubject)[0] ?? null) : null;
-  const cycleState = currentSubject ? subjectToCycleState(currentSubject) : null;
+  const activeTheme = currentSubject ? (subjectToThemes(currentSubject)[0] ?? defaultTheme) : defaultTheme;
+  const cycleState = currentSubject ? subjectToCycleState(currentSubject) : defaultCycleState;
 
-  // Only mount useStudyTimer if both are available:
-  const studyTimer = activeTheme && cycleState
-    ? useStudyTimer({
-        subjectCycleState: cycleState,
-        activeTheme,
-        onCycleGoalReached: () => {
-          // TODO: connect to useAutoCycleTransition or useManualCycleDecision
-          console.log('[Timer] Cycle goal reached')
-        },
-        onTick: (updatedCycleState, updatedTheme) => {
-          // TODO: persist updatedCycleState and updatedTheme back to Subject
-          console.log('[Timer] Tick — persist state here')
-        },
-      })
-    : null;
+  const autoTransition = useAutoCycleTransition({
+    isAutoCycle: isAutoCycle ?? false,
+    isPomodoroComplete: timerMode !== 'focus' || !isActive,
+    activeTheme,
+    onAdvance: () => {
+      quickSwitchToNext();
+    },
+    onTransitionCancelled: () => {
+      // User cancelled auto-transition
+    }
+  });
 
-  // TODO: connect useAutoCycleTransition when isAutoCycle is true
-  // Requires: Problem 7 bridge adapter + adapter writing back to Subject model
+  const manualDecision = useManualCycleDecision({
+    isAutoCycle: isAutoCycle ?? false,
+    activeTheme,
+    nextSubjectName: nextSubject?.name || null,
+    onContinue: () => {
+      // continue studying current subject
+    },
+    onChangeSubject: () => {
+      quickSwitchToNext();
+    }
+  });
 
-  // TODO: connect useManualCycleDecision when isAutoCycle is false
-  // Requires: same as above
+  const studyTimer = useStudyTimer({
+    subjectCycleState: cycleState,
+    activeTheme,
+    onCycleGoalReached: () => {
+      if (isAutoCycle) {
+        autoTransition.triggerTransition();
+      } else {
+        manualDecision.triggerDecision();
+      }
+    },
+    onTick: (updatedCycleState, updatedTheme) => {
+      if (!currentSubject) return;
+
+      setSubjects(prev => prev.map(s => {
+        if (s.id === updatedCycleState.subjectId) {
+          return {
+            ...s,
+            studiedMinutes: updatedCycleState.currentCycleTime + updatedCycleState.excessTime,
+            topics: s.topics.map(t => {
+              if (t.id === updatedTheme.id) {
+                return {
+                  ...t,
+                  studiedMinutes: updatedTheme.accumulatedTime,
+                  isCompleted: updatedTheme.isCompleted
+                };
+              }
+              return t;
+            })
+          };
+        }
+        return s;
+      }));
+    },
+  });
+
+  useEffect(() => {
+    if (currentSubject && isActive && timerMode === 'focus') {
+      studyTimer.start();
+    } else {
+      studyTimer.pause();
+    }
+  }, [currentSubject, isActive, timerMode, studyTimer.start, studyTimer.pause]);
 
   const lastStopPoint = useMemo(() => {
     if (!currentSubject || !studyHistory) return null;
@@ -586,6 +675,20 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
           isRequired={waitingForManualSelection}
         />
       )}
+
+      <TransitionOverlay 
+        transitionState={autoTransition.transitionState} 
+        activeThemeName={activeTheme.name}
+        onCancel={() => autoTransition.cancelTransition()}
+      />
+      
+      <DecisionPrompt 
+        decisionState={manualDecision.decisionState}
+        activeThemeName={activeTheme.name}
+        nextSubjectName={nextSubject?.name || null}
+        onContinue={manualDecision.handleContinue}
+        onChangeSubject={manualDecision.handleChangeSubject}
+      />
 
       {showMissionReport && currentSubject && (
         <MissionReportView

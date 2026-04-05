@@ -13,7 +13,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, activeCo
     { id: Tab.INICIO, label: 'Início', icon: 'home', type: 'material' },
     { id: Tab.CICLO, label: 'Ciclo', icon: 'donut_large', type: 'material' },
     { id: Tab.BATALHA, label: 'Batalha', icon: 'swords', type: 'symbols' },
-    { id: Tab.COLISEU, label: 'Coliseu', icon: 'account_balance', type: 'symbols' },
+    { id: Tab.COLISEU, label: 'Coliseu', icon: 'stadium', type: 'symbols' },
     { id: Tab.MAIS, label: 'Mais', icon: 'more_horiz', type: 'material' },
   ];
 
@@ -53,7 +53,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, activeCo
               <button
                 onClick={() => setActiveTab(item.id)}
                 className="flex flex-col items-center justify-center w-10 h-10
-                           text-gray-400 hover:text-blue-600
+                           text-slate-400 hover:text-blue-600
                            transition-all"
               >
                 {item.type === 'material' ? (
@@ -62,7 +62,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, activeCo
                   <span className="material-symbols-outlined text-2xl">{item.icon}</span>
                 )}
               </button>
-              <span className="text-gray-400 font-medium text-[10px] whitespace-nowrap mt-1">
+              <span className="text-slate-400 font-medium text-[10px] whitespace-nowrap mt-1">
                 {item.label}
               </span>
             </div>

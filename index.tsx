@@ -1,10 +1,24 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './src/index.css';
+import './index.css';
 import App from './App';
 import { AppProvider } from './contexts/AppContext';
 import { UIProvider } from './contexts/UIContext';
+import { AuthProvider } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import { registerSW } from 'virtual:pwa-register';
+
+// Register Service Worker
+const updateSW = registerSW({
+  onNeedRefresh() {
+    if (confirm('Nova versão disponível. Deseja atualizar?')) {
+      updateSW(true);
+    }
+  },
+  onOfflineReady() {
+    console.log('App pronto para funcionar offline');
+  },
+});
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,10 +28,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <ErrorBoundary>
-    <AppProvider>
+    <AuthProvider>
       <UIProvider>
-        <App />
+        <AppProvider>
+          <App />
+        </AppProvider>
       </UIProvider>
-    </AppProvider>
+    </AuthProvider>
   </ErrorBoundary>
 );

@@ -29,6 +29,7 @@ const SubTopicDetailView: React.FC<SubTopicDetailViewProps> = ({
       name: topic.name,
       order: 0,
       goalTime: topic.totalMinutes,
+      priority: topic.priority ?? 3,
       accumulatedTime: topic.studiedMinutes,
       isCompleted: topic.isCompleted,
       completionSource: null, // Default
@@ -141,6 +142,7 @@ const SubTopicDetailView: React.FC<SubTopicDetailViewProps> = ({
         {/* Theme Checklist Integration */}
         <ThemeChecklist 
           theme={localTheme}
+          subjectColor={subjectColor}
           onSubtopicUpdate={handleSubtopicUpdate}
           onThemeCompletionChange={handleThemeCompletionChange}
         />

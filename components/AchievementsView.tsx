@@ -1,82 +1,77 @@
 import React, { useState } from 'react';
 import { Achievement, UserStats } from '../types';
 import { useApp } from '../contexts/AppContext';
+import { ACHIEVEMENTS as ALL_ACHIEVEMENTS } from '../constants/achievements';
 
 interface AchievementsViewProps {
   userStats: UserStats;
   onBack: () => void;
 }
 
-const ACHIEVEMENTS: Achievement[] = [
-  {
-    id: '1',
-    title: 'Primeiros Passos',
-    description: 'Completou sua primeira sessão de estudo de 25 minutos.',
-    icon: 'rocket_launch',
-    rarity: 'common',
-    isUnlocked: true,
-    unlockedAt: '12 Out 2023',
-  },
-  {
-    id: '2',
-    title: 'Foco Inabalável',
-    description: 'Completou 4 sessões seguidas no Modo Estrito.',
-    icon: 'shield',
-    rarity: 'rare',
-    isUnlocked: true,
-    unlockedAt: '15 Out 2023',
-  },
-  {
-    id: '3',
-    title: 'Maratonista Noturno',
-    description: 'Estudou por mais de 3 horas após às 22:00.',
-    icon: 'dark_mode',
-    rarity: 'rare',
-    isUnlocked: false,
-    progress: 65,
-    currentValue: '2h',
-    goalValue: '3h',
-  },
-  {
-    id: '4',
-    title: 'Mestre do Ciclo',
-    description: 'Mantenha todas as matérias acima de 50% de progresso.',
-    icon: 'loop',
-    rarity: 'epic',
-    isUnlocked: false,
-    progress: 40,
-    currentValue: '2/5',
-    goalValue: '5/5',
-  },
-  {
-    id: '5',
-    title: 'Lenda do Coliseu',
-    description: 'Vença 50 batalhas contra o tempo sem errar questões.',
-    icon: 'workspace_premium',
-    rarity: 'legendary',
-    isUnlocked: false,
-    progress: 10,
-    currentValue: '5',
-    goalValue: '50',
-  },
-  {
-    id: '6',
-    title: 'Semana Perfeita',
-    description: 'Bateu todas as metas diárias por 7 dias consecutivos.',
-    icon: 'calendar_month',
-    rarity: 'epic',
-    isUnlocked: false,
-    progress: 85,
-    currentValue: '6',
-    goalValue: '7',
-  },
-];
-
 const AchievementsView: React.FC<AchievementsViewProps> = ({ userStats, onBack }) => {
-  const { isDarkMode } = useApp();
+  const { isDarkMode, studyHistory, subjects, goals } = useApp();
   const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
 
-  const filteredAchievements = ACHIEVEMENTS.filter(a => {
+  // Calculate dynamic progress for locked achievements
+  const achievements: Achievement[] = ALL_ACHIEVEMENTS.map(base => {
+    const unlockedInfo = userStats.unlockedAchievements.find(ua => ua.id === base.id);
+    const isUnlocked = !!unlockedInfo;
+    
+    // If already unlocked, we don't need to calculate progress
+    if (isUnlocked) return { ...base, isUnlocked: true, unlockedAt: unlockedInfo?.unlockedAt };
+
+    // Otherwise, calculate current value based on app state
+    let currentValue = 0;
+    let progress = 0;
+
+    switch (base.id) {
+      case '1': // Primeiros Passos
+        currentValue = studyHistory.some(s => s.minutesStudied >= 25) ? 1 : 0;
+        progress = currentValue * 100;
+        break;
+      case '2': // Foco Inabalável
+        // This one is harder to track without a specific counter, but we can check history
+        // Let's assume we track it in userStats or just check last 4 sessions
+        const last4 = studyHistory.slice(-4);
+        currentValue = (last4.length === 4 && last4.every(s => s.type === 'foco')) ? 1 : 0;
+        progress = currentValue * 100;
+        break;
+      case '3': // Maratonista Noturno
+        const nightMinutes = studyHistory
+          .filter(s => {
+            const hour = new Date(s.date).getHours();
+            return hour >= 22 || hour < 4;
+          })
+          .reduce((acc, s) => acc + s.minutesStudied, 0);
+        currentValue = nightMinutes;
+        progress = Math.min(100, Math.round((nightMinutes / (Number(base.goalValue) || 180)) * 100));
+        break;
+      case '4': // Mestre do Ciclo
+        const above50 = subjects.filter(s => (s.studiedMinutes / s.totalMinutes) >= 0.5).length;
+        currentValue = above50;
+        const totalSubjects = subjects.length;
+        progress = totalSubjects > 0 ? Math.round((above50 / totalSubjects) * 100) : 0;
+        break;
+      case '5': // Lenda do Coliseu
+        const perfectBattles = studyHistory.filter(s => s.type === 'batalha' && s.accuracy === 100).length;
+        currentValue = perfectBattles;
+        progress = Math.min(100, Math.round((perfectBattles / (Number(base.goalValue) || 50)) * 100));
+        break;
+      case '6': // Semana Perfeita
+        currentValue = userStats.dailyStreak;
+        progress = Math.min(100, Math.round((userStats.dailyStreak / (Number(base.goalValue) || 7)) * 100));
+        break;
+    }
+
+    return { 
+      ...base, 
+      isUnlocked, 
+      currentValue: base.id === '3' ? `${Math.floor(currentValue / 60)}h` : currentValue.toString(),
+      progress 
+    };
+  });
+
+  const filteredAchievements = achievements.filter(a => {
     if (filter === 'unlocked') return a.isUnlocked;
     if (filter === 'locked') return !a.isUnlocked;
     return true;

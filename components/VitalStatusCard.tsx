@@ -9,23 +9,58 @@ interface VitalStatusCardProps {
 const VitalStatusCard: React.FC<VitalStatusCardProps> = ({ userStats, studyHistory }) => {
   // Calculate Accuracy from history
   const accuracy = useMemo(() => {
-    if (studyHistory.length === 0) return 92; // Default/Mock from screenshot
+    if (studyHistory.length === 0) return 0;
     const sessionsWithQuestions = studyHistory.filter(s => s.questionsCompleted > 0);
-    if (sessionsWithQuestions.length === 0) return 92;
+    if (sessionsWithQuestions.length === 0) return 0;
     
     const totalAccuracy = sessionsWithQuestions.reduce((acc, s) => acc + s.accuracy, 0);
     return Math.round(totalAccuracy / sessionsWithQuestions.length);
   }, [studyHistory]);
 
-  // Focus could be based on recent consistency or just mocked for now
-  const focus = 65; // Mock from screenshot
-  const confidence = 85; // Mock value for Confiança
+  // Calculate Focus based on study consistency in the last 7 days
+  const focus = useMemo(() => {
+    if (studyHistory.length === 0) return 0;
+    const now = new Date();
+    const last7Days = studyHistory.filter(s => {
+      const diffTime = Math.abs(now.getTime() - new Date(s.date).getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      return diffDays <= 7;
+    });
+    const uniqueDays = new Set(last7Days.map(s => new Date(s.date).toDateString())).size;
+    return Math.round((uniqueDays / 7) * 100);
+  }, [studyHistory]);
+
+  // Calculate Confidence based on question attempts
+  const confidence = useMemo(() => {
+    if (studyHistory.length === 0) return 0;
+    
+    let totalAttempts = 0;
+    let totalConfidenceScore = 0;
+
+    studyHistory.forEach(session => {
+      if (session.attempts && session.attempts.length > 0) {
+        session.attempts.forEach(attempt => {
+          totalAttempts++;
+          if (!attempt.isCorrect) {
+            totalConfidenceScore += 0;
+          } else {
+            if (attempt.confidence === 'certain') totalConfidenceScore += 100;
+            else if (attempt.confidence === 'doubtful') totalConfidenceScore += 50;
+            else if (attempt.confidence === 'guess') totalConfidenceScore += 25;
+          }
+        });
+      }
+    });
+
+    if (totalAttempts === 0) return 0;
+    return Math.round(totalConfidenceScore / totalAttempts);
+  }, [studyHistory]);
   
   const hp = userStats?.hp ?? 1000;
   const stamina = userStats?.stamina ?? 100;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-[32px] border-2 border-blue-500/30 p-6 shadow-sm flex flex-col gap-6">
+    <div className="bg-white dark:bg-slate-900 rounded-[32px] border-2 border-blue-500/30 dark:border-blue-500/20 p-6 shadow-sm flex flex-col gap-6">
       
       {/* Vida */}
       <div className="flex flex-col gap-2">

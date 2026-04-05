@@ -29,7 +29,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({
     { id: Tab.INICIO, icon: 'home', label: 'Início', isSymbol: false },
     { id: Tab.CICLO, icon: 'donut_large', label: 'Ciclo', isSymbol: true },
     { id: Tab.BATALHA, icon: 'swords', label: 'Batalha', isSymbol: true },
-    { id: Tab.COLISEU, icon: 'account_balance', label: 'Coliseu', isSymbol: true },
+    { id: Tab.COLISEU, icon: 'stadium', label: 'Coliseu', isSymbol: true },
     { id: Tab.RANKING, icon: 'emoji_events', label: 'Ranking', isSymbol: true },
     { id: Tab.JORNADA, icon: 'map', label: 'Jornada', isSymbol: true },
     { id: Tab.LOJA, icon: 'shopping_bag', label: 'Loja', isSymbol: true },
@@ -44,7 +44,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({
         <div className="bg-gradient-to-br from-red-500 to-orange-500 p-2.5 rounded-xl text-white shadow-lg shadow-red-500/20 shrink-0">
           <span className="material-symbols-outlined text-2xl block">swords</span>
         </div>
-        <span className={`text-xl font-extrabold tracking-tight text-gray-900 dark:text-white whitespace-nowrap overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
+        <span className={`text-xl font-extrabold tracking-tight text-slate-900 dark:text-white whitespace-nowrap overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
           StudyQuest
         </span>
       </div>
@@ -64,7 +64,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({
               className={`flex items-center py-3 rounded-xl transition-all group relative ${
                 isActive 
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-                  : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400'
+                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400'
               } ${isCollapsed ? 'justify-center px-0 gap-0' : 'px-4 gap-3'}`}
             >
               {item.isSymbol ? (
@@ -92,7 +92,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({
         <div className={`px-3 mb-2 flex ${isCollapsed ? 'justify-center' : 'justify-end'}`}>
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title={isCollapsed ? "Expandir menu" : "Recolher menu"}
           >
             <span className="material-symbols-outlined">
@@ -103,14 +103,14 @@ const SideNavigation: React.FC<SideNavigationProps> = ({
       )}
 
       {/* User Profile Footer */}
-      <div className={`mt-auto pt-8 border-t border-gray-100 dark:border-gray-800 transition-all duration-300 ${isCollapsed ? 'px-2' : 'px-6'}`}>
+      <div className={`mt-auto pt-8 border-t border-slate-100 dark:border-slate-800 transition-all duration-300 ${isCollapsed ? 'px-2' : 'px-6'}`}>
         <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shrink-0">
+          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
             <img alt="Avatar" src="/default-avatar.svg"/>
           </div>
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-            <p className="text-sm font-bold text-gray-900 dark:text-white leading-none whitespace-nowrap">Guerreiro Pro</p>
-            <p className="text-[10px] text-gray-500 uppercase mt-1 whitespace-nowrap">Nível {userStats.level}</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white leading-none whitespace-nowrap">Guerreiro Pro</p>
+            <p className="text-[10px] text-slate-500 uppercase mt-1 whitespace-nowrap">Nível {userStats.level}</p>
           </div>
         </div>
       </div>

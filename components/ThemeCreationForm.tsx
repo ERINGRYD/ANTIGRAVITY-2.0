@@ -11,10 +11,13 @@
 
 import React, { useState } from 'react';
 import { Theme, Subtopic } from '../types';
+import KnowledgeLevelSelector from './KnowledgeLevelSelector';
+import { KnowledgeLevel } from '../utils/priorityUtils';
 
 interface ThemeCreationFormProps {
   subjectId: string;
   currentThemeCount: number;
+  subjectPriority: 1 | 2 | 3 | 4 | 5;
   onThemeCreated: (theme: Theme) => void;
   onCancel: () => void;
 }
@@ -22,12 +25,14 @@ interface ThemeCreationFormProps {
 const ThemeCreationForm: React.FC<ThemeCreationFormProps> = ({ 
   subjectId, 
   currentThemeCount, 
+  subjectPriority,
   onThemeCreated, 
   onCancel 
 }) => {
   const [name, setName] = useState('');
   const [goalTime, setGoalTime] = useState<string>(''); // String to handle empty state
   const [subtopics, setSubtopics] = useState<string[]>([]);
+  const [knowledgeLevel, setKnowledgeLevel] = useState<KnowledgeLevel>('iniciante');
   const [errors, setErrors] = useState<{ name?: string; goalTime?: string; subtopics?: string[] }>({});
 
   const handleAddSubtopic = () => {
@@ -117,10 +122,12 @@ const ThemeCreationForm: React.FC<ThemeCreationFormProps> = ({
       name: name.trim(),
       order: currentThemeCount,
       goalTime: parseInt(goalTime),
+      priority: subjectPriority,
       accumulatedTime: 0,
       isCompleted: false,
       completionSource: null,
       subtopics: newSubtopics,
+      knowledgeLevel,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -194,6 +201,17 @@ const ThemeCreationForm: React.FC<ThemeCreationFormProps> = ({
                 <span className="material-icons-round text-[10px]">error</span> {errors.goalTime}
               </span>
             )}
+          </div>
+
+          {/* Knowledge Level */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Nível de Conhecimento
+            </label>
+            <KnowledgeLevelSelector
+              value={knowledgeLevel}
+              onChange={setKnowledgeLevel}
+            />
           </div>
 
           {/* Subtopics */}

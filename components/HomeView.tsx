@@ -18,13 +18,8 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
   const totalStudyTime = subjects.reduce((sum, subject) => sum + subject.studiedMinutes, 0);
 
   return (
-    <main className="px-5 py-6 flex flex-col gap-8 animate-in fade-in duration-500 pb-32">
+    <main className="px-6 py-8 flex flex-col gap-8 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto w-full">
       <VitalStatusCard userStats={userStats} studyHistory={studyHistory} />
-      
-      <section className="flex flex-col gap-1">
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Bom dia, Estudante! 👋</h2>
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Hoje é um ótimo dia para bater suas metas.</p>
-      </section>
 
       <section className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[32px] p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
@@ -47,7 +42,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
       </section>
 
       {nextSubject && (
-        <section className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-4 transition-colors duration-300">
+        <section className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-colors duration-300">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Próxima Matéria</h3>
             <span 
@@ -83,7 +78,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-3 transition-colors duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col gap-3 transition-colors duration-300">
           <div className="w-10 h-10 bg-blue-50 dark:bg-blue-500/10 text-blue-500 rounded-xl flex items-center justify-center">
             <span className="material-icons-round">schedule</span>
           </div>
@@ -92,7 +87,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Tempo Total</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-3 transition-colors duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col gap-3 transition-colors duration-300">
           <div className="w-10 h-10 bg-amber-50 dark:bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center">
             <span className="material-icons-round">bolt</span>
           </div>
@@ -103,7 +98,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
         </div>
       </div>
 
-      <section className="bg-white dark:bg-slate-800 rounded-[32px] p-6 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-6 transition-colors duration-300">
+      <section className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col gap-6 transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center">
@@ -179,6 +174,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
             desc="Matemática: Geometria Analítica" 
             color="text-indigo-500" 
             bg="bg-indigo-50"
+            darkBg="dark:bg-indigo-500/10"
           />
           <RecommendationItem 
             icon="swords" 
@@ -186,6 +182,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
             desc="Ganhe bônus de 200 XP agora" 
             color="text-red-500" 
             bg="bg-red-50"
+            darkBg="dark:bg-red-500/10"
           />
         </div>
       </section>
@@ -193,9 +190,9 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
   );
 };
 
-const RecommendationItem: React.FC<{ icon: string; title: string; desc: string; color: string; bg: string }> = ({ icon, title, desc, color, bg }) => (
-  <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group">
-    <div className={`w-12 h-12 ${bg} dark:bg-opacity-10 ${color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+const RecommendationItem: React.FC<{ icon: string; title: string; desc: string; color: string; bg: string; darkBg: string }> = ({ icon, title, desc, color, bg, darkBg }) => (
+  <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group">
+    <div className={`w-12 h-12 ${bg} ${darkBg} ${color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
       <span className="material-icons-round">{icon}</span>
     </div>
     <div className="flex-1 min-w-0">

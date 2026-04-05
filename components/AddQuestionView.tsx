@@ -25,7 +25,7 @@ const AddQuestionView: React.FC<AddQuestionViewProps> = ({
   const [selectedTopicId, setSelectedTopicId] = useState<string>(initialTopicId || '');
   const [selectedSubTopicId, setSelectedSubTopicId] = useState<string>('');
   
-  const [questionType, setQuestionType] = useState<'multipla' | 'certo_errado' | 'flashcard'>('flashcard');
+  const [questionType, setQuestionType] = useState<'multipla' | 'certo_errado'>('multipla');
   const [difficulty, setDifficulty] = useState<'facil' | 'medio' | 'dificil'>('facil');
   const [showForge, setShowForge] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -85,7 +85,6 @@ const AddQuestionView: React.FC<AddQuestionViewProps> = ({
   ]);
   const [correctAnswerMultipla, setCorrectAnswerMultipla] = useState('A');
   const [correctAnswerCertoErrado, setCorrectAnswerCertoErrado] = useState('Certo');
-  const [flashcardAnswer, setFlashcardAnswer] = useState('');
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -104,7 +103,6 @@ const AddQuestionView: React.FC<AddQuestionViewProps> = ({
         options: questionType === 'multipla' ? options : undefined,
         correctAnswerMultipla: questionType === 'multipla' ? correctAnswerMultipla : undefined,
         correctAnswerCertoErrado: questionType === 'certo_errado' ? correctAnswerCertoErrado : undefined,
-        flashcardAnswer: questionType === 'flashcard' ? flashcardAnswer : undefined,
       });
     }, 2500);
   };
@@ -290,12 +288,6 @@ const AddQuestionView: React.FC<AddQuestionViewProps> = ({
                 >
                   Certo / Errado
                 </button>
-                <button 
-                  onClick={() => setQuestionType('flashcard')}
-                  className={`flex-1 py-1.5 text-[10px] sm:text-xs font-semibold rounded-md transition-all ${questionType === 'flashcard' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                >
-                  Flashcard
-                </button>
               </div>
             </section>
 
@@ -400,38 +392,7 @@ const AddQuestionView: React.FC<AddQuestionViewProps> = ({
                   </div>
                 )}
 
-                {questionType === 'flashcard' && (
-                  <div className="relative">
-                    <div className="flex justify-between items-end mb-2">
-                      <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1">Verso do Flashcard (Resposta)</label>
-                      <div className="flex items-center gap-1 group cursor-pointer" title="Inserir Fórmula LaTeX">
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 group-hover:text-blue-600 transition-colors hidden sm:block">LaTeX</span>
-                        <button className="text-slate-400 dark:text-slate-500 hover:text-blue-600 transition-colors p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
-                          <span className="font-serif italic font-bold text-sm tracking-wide">$ f(x) $</span>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="relative">
-                      <textarea 
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm p-3 focus:ring-2 focus:ring-blue-500 resize-none placeholder-slate-400 dark:placeholder-slate-500 outline-none dark:text-white" 
-                        placeholder="Digite a resposta correta que aparecerá no verso..." 
-                        rows={4}
-                        value={flashcardAnswer}
-                        onChange={(e) => setFlashcardAnswer(e.target.value)}
-                      ></textarea>
-                      <div className="absolute right-2 top-2" title="Suporte LaTeX">
-                        <span className="font-serif italic font-bold text-xs text-slate-400 dark:text-slate-500">$ f(x) $</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <button 
-                  onClick={() => setShowPreview(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-[0.99]"
-                >
-                  <span className="material-symbols-outlined text-lg">sync</span>
-                  <span className="text-sm font-semibold">Girar para Pré-visualizar</span>
-                </button>
+
               </div>
             </section>
 

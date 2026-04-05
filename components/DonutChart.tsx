@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Subject } from '../types';
+import { calculateCombinedWeight } from '../utils/priorityUtils';
 
 interface DonutChartProps {
   subjects: Subject[];
@@ -12,8 +13,13 @@ const DonutChart: React.FC<DonutChartProps> = ({ subjects, totalTimeStr, percent
   const radius = 38; 
   const circumference = 2 * Math.PI * radius;
   
-  // Calcula o total de minutos planejados (metas) para as proporções do ciclo
-  const totalPlanned = subjects.reduce((acc, s) => acc + Math.max(s.totalMinutes, 1), 0);
+  // Calcula os pesos para as proporções do ciclo
+  const subjectsWithWeights = subjects.map(s => ({
+    ...s,
+    weight: calculateCombinedWeight(s.priority || 3, s.knowledgeLevel || 'intermediario')
+  }));
+  
+  const totalWeight = subjectsWithWeights.reduce((acc, s) => acc + s.weight, 0);
   
   // Variáveis para rastrear o progresso do arco
   let accumulatedOffset = 0;
@@ -25,10 +31,11 @@ const DonutChart: React.FC<DonutChartProps> = ({ subjects, totalTimeStr, percent
         {/* Fundo do Círculo (Track) */}
         <circle cx="50" cy="50" r={radius} fill="transparent" stroke="#f8fafc" strokeWidth="18" className="dark:stroke-slate-900" />
         
-        {/* Segmentos das Matérias baseados no Planejamento (Ciclo) */}
-        {subjects.map((subject) => {
-          const plannedTime = Math.max(subject.totalMinutes, 1);
-          const ratio = plannedTime / totalPlanned;
+        {/* Segmentos das Matérias baseados nos Pesos (Ciclo) */}
+        {subjectsWithWeights.map((subject) => {
+          const ratio = totalWeight > 0 ? subject.weight / totalWeight : 0;
+          if (ratio === 0) return null;
+          
           const segmentValue = ratio * circumference;
           const currentOffset = accumulatedOffset;
           
@@ -38,7 +45,6 @@ const DonutChart: React.FC<DonutChartProps> = ({ subjects, totalTimeStr, percent
           const midAngleRad = (midAnglePercent * 360) * (Math.PI / 180);
           
           // Coordenadas para o texto centralizado no arco
-          // Adicionamos um pequeno ajuste para o texto não ficar colado na borda interna
           const textX = 50 + radius * Math.cos(midAngleRad);
           const textY = 50 + radius * Math.sin(midAngleRad);
           

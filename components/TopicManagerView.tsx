@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Topic, Subject } from '../types';
 import { useApp } from '../contexts/AppContext';
 import AddQuestionView from './AddQuestionView';
-import AddFlashcardView from './AddFlashcardView';
 
 interface TopicManagerViewProps {
   topic: Topic;
@@ -27,7 +26,7 @@ const TopicManagerView: React.FC<TopicManagerViewProps> = ({
   const [subItems, setSubItems] = useState<string[]>(topic.subItems || []);
   const [newItem, setNewItem] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [activeView, setActiveView] = useState<'manager' | 'add_question' | 'add_flashcard'>('manager');
+  const [activeView, setActiveView] = useState<'manager' | 'add_question'>('manager');
 
   // Find the subject ID based on the subject name if possible, or just pass empty string if not found
   const subjectId = subjects.find(s => s.name === subjectName)?.id;
@@ -83,21 +82,6 @@ const TopicManagerView: React.FC<TopicManagerViewProps> = ({
         onBack={() => setActiveView('manager')} 
         onSave={(data) => {
           console.log('Question Saved:', data);
-          setActiveView('manager');
-        }}
-      />
-    );
-  }
-
-  if (activeView === 'add_flashcard') {
-    return (
-      <AddFlashcardView
-        topic={topic}
-        subjectName={subjectName}
-        subjectColor={subjectColor}
-        onBack={() => setActiveView('manager')}
-        onSave={(data) => {
-          console.log('Flashcard Saved:', data);
           setActiveView('manager');
         }}
       />
@@ -190,7 +174,7 @@ const TopicManagerView: React.FC<TopicManagerViewProps> = ({
         </section>
 
         {/* Action Cards Grid - Responsive grid for tablet/desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Linked Questions Section */}
           <section className="space-y-3">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">Questões Vinculadas</h2>
@@ -209,29 +193,6 @@ const TopicManagerView: React.FC<TopicManagerViewProps> = ({
               >
                 <span className="material-symbols-outlined text-[24px]">post_add</span>
                 <span className="tracking-tight uppercase text-xs">Adicionar Nova Questão</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Linked Flashcards Section */}
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">Flashcards Vinculados</h2>
-            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm p-6 border border-slate-100 dark:border-slate-800 text-center flex flex-col h-full justify-between">
-              <div className="mb-6">
-                <span className="text-5xl font-bold text-slate-800 dark:text-white tracking-tight">15</span>
-                <p className="text-slate-400 dark:text-slate-500 text-xs font-medium mt-2">Flashcards cadastrados neste tópico</p>
-              </div>
-              <button 
-                onClick={() => setActiveView('add_flashcard')}
-                style={{ 
-                  backgroundColor: isDarkMode ? `${subjectColor}25` : `${subjectColor}15`, 
-                  color: subjectColor,
-                  borderColor: isDarkMode ? `${subjectColor}50` : `${subjectColor}40`
-                }}
-                className="w-full border-2 font-bold py-4 px-6 rounded-2xl hover:bg-white dark:hover:bg-slate-800 hover:shadow-[0_8px_20px_rgba(0,0,0,0.05)] active:scale-[0.97] transition-all flex items-center justify-center gap-3"
-              >
-                <span className="material-symbols-outlined text-[24px]">style</span>
-                <span className="tracking-tight uppercase text-xs">Adicionar Novo Flashcard</span>
               </button>
             </div>
           </section>

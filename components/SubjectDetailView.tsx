@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Subject, Topic, Theme, isSubjectCompleted } from '../types';
 import { useApp } from '../contexts/AppContext';
 import ThemeCreationForm from './ThemeCreationForm';
+import StarRating from './StarRating';
+import { sortThemesByPriority } from '../utils/themePriority';
 
 interface SubjectDetailViewProps {
   subject: Subject;
@@ -26,6 +28,7 @@ const DraggableTopicCard: React.FC<{
   onDragStart: (index: number) => void;
   onDragEnter: (index: number) => void;
   onDragEnd: () => void;
+  onPriorityChange: (topicId: string, priority: 1|2|3|4|5) => void;
   isDragging: boolean;
   isDropTarget: boolean;
   isEditMode?: boolean;
@@ -39,10 +42,12 @@ const DraggableTopicCard: React.FC<{
   onDragStart,
   onDragEnter,
   onDragEnd,
+  onPriorityChange,
   isDragging,
   isDropTarget,
   isEditMode = false,
 }) => {
+  const [showInfo, setShowInfo] = useState(false);
   const progress = (topic.totalMinutes || 0) > 0
     ? ((topic.studiedMinutes || 0) / (topic.totalMinutes || 0)) * 100
     : 0;
@@ -51,7 +56,7 @@ const DraggableTopicCard: React.FC<{
     const mins = minutes || 0;
     const h = Math.floor(mins / 60);
     const m = mins % 60;
-    return `${h}h ${m.toString().padStart(2, '0')}m`;
+    return `${h}H ${m.toString().padStart(2, '0')}M`;
   };
 
   return (
@@ -79,7 +84,7 @@ const DraggableTopicCard: React.FC<{
     >
       {/* Indicador de posição (Badge conforme Print) */}
       <div 
-        className="absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg z-20 border-4 border-white"
+        className="absolute -top-3 -left-3 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-lg z-20 border-[3px] border-white dark:border-[#0B1120]"
         style={{ backgroundColor: subjectColor }}
       >
         {index + 1}
@@ -102,23 +107,19 @@ const DraggableTopicCard: React.FC<{
         layout
         initial={false}
         animate={{ 
-          backgroundColor: topic.isCompleted && !isEditMode
-            ? (isDarkMode ? 'rgba(20, 83, 45, 0.2)' : 'rgba(240, 253, 244, 0.3)') 
-            : (isDarkMode ? '#1e293b' : '#ffffff'),
-          borderColor: topic.isCompleted && !isEditMode
-            ? (isDarkMode ? '#064e3b' : '#dcfce7') 
-            : (isDarkMode ? '#334155' : '#f1f5f9'),
+          backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+          borderColor: isDarkMode ? '#334155' : '#f1f5f9',
           scale: isDragging ? 0.95 : 1,
           opacity: isDragging ? 0.3 : 1
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className={`rounded-[32px] shadow-sm border overflow-hidden flex flex-col h-full ${
+        className={`rounded-3xl shadow-sm border overflow-hidden flex flex-col h-full ${
           !isDragging && !isEditMode ? 'hover:shadow-xl hover:-translate-y-1' : ''
         }`}
       >
         
-        <div className="p-6 flex-1 space-y-5">
-          <div className="flex items-start justify-between">
+        <div className="p-5 flex-1 flex flex-col">
+          <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
               <motion.div 
                 animate={{ 
@@ -128,70 +129,96 @@ const DraggableTopicCard: React.FC<{
                 className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md shrink-0"
                 style={{ backgroundColor: subjectColor }}
               >
-                <span className="material-icons-round text-2xl">{topic.icon}</span>
+                <span className="material-icons-round text-2xl">{topic.icon || 'menu_book'}</span>
               </motion.div>
               <div className="min-w-0">
                 <motion.h3 
-                  animate={{ color: topic.isCompleted && !isEditMode ? '#10B981' : (isDarkMode ? '#f8fafc' : '#0f172a') }}
-                  className="text-base font-black leading-tight truncate"
+                  animate={{ color: isDarkMode ? '#f8fafc' : '#0f172a' }}
+                  className="text-sm font-bold leading-tight truncate flex items-center gap-2"
                 >
                   {topic.name}
+                  
+                  <div className="relative inline-flex items-center">
+                    <button
+                      onMouseEnter={() => setShowInfo(true)}
+                      onMouseLeave={() => setShowInfo(false)}
+                      className="p-1 -m-1 text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                    >
+                      <span className="material-icons-round text-[14px]">info</span>
+                    </button>
+                    
+                    <AnimatePresence>
+                      {showInfo && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 pointer-events-none"
+                        >
+                          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Informações</p>
+                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 leading-relaxed">
+                            {topic.description || `Meta de estudo: ${formatTime(topic.totalMinutes)}`}
+                          </p>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white dark:border-t-slate-800" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </motion.h3>
-                <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${topic.studiedMinutes > 0 ? 'text-slate-400 dark:text-slate-500' : 'text-slate-300 dark:text-slate-700'}`}>
-                  {formatTime(topic.studiedMinutes)}
-                </p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <StarRating 
+                    value={topic.priority || 1} 
+                    onChange={(val) => onPriorityChange(topic.id, val as any)}
+                    readonly={!isEditMode}
+                    size="sm"
+                    accentColor={subjectColor}
+                  />
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    {formatTime(topic.studiedMinutes)}
+                  </p>
+                </div>
               </div>
             </div>
             
             {!isEditMode && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0 ml-2 mt-1">
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggleComplete(topic.id);
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                     topic.isCompleted 
-                      ? 'bg-green-500 text-white shadow-green-200 dark:shadow-green-900 shadow-lg' 
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      ? 'bg-blue-500 border-blue-500 text-white' 
+                      : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-blue-500 dark:hover:border-blue-500'
                   }`}
+                  style={topic.isCompleted ? { backgroundColor: subjectColor, borderColor: subjectColor } : {}}
                 >
-                  <AnimatePresence mode="wait">
-                    <motion.span 
-                      key={topic.isCompleted ? 'checked' : 'unchecked'}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.5, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="material-icons-round text-lg"
-                    >
-                      {topic.isCompleted ? 'check' : 'radio_button_unchecked'}
-                    </motion.span>
-                  </AnimatePresence>
+                  {topic.isCompleted && <span className="material-icons-round text-[12px]">check</span>}
                 </button>
               </div>
             )}
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-end">
+          <div className="space-y-2 mt-auto">
+            <div className="flex justify-between items-end mb-1.5">
               <motion.span 
-                animate={{ color: topic.isCompleted && !isEditMode ? '#10B981' : subjectColor }}
-                className="text-sm font-black"
+                className="text-xs font-bold"
+                style={{ color: subjectColor }}
               >
                 {Math.round(progress)}%
               </motion.span>
-              <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-tighter">
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 {formatTime(topic.studiedMinutes)} / {formatTime(topic.totalMinutes)}
               </span>
             </div>
-            <div className="h-2 bg-slate-50 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-100/50 dark:border-slate-800">
+            <div className="h-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden">
               <motion.div 
                 className="h-full rounded-full"
                 initial={{ width: 0 }}
                 animate={{ 
                   width: `${progress}%`, 
-                  backgroundColor: topic.isCompleted && !isEditMode ? '#10B981' : subjectColor 
+                  backgroundColor: subjectColor 
                 }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
               />
@@ -202,7 +229,7 @@ const DraggableTopicCard: React.FC<{
         {/* Rodapé do Card */}
         <button
           onClick={() => !isEditMode && onTopicClick(topic, index)}
-          className="w-full py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-50 dark:border-slate-800 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+          className="w-full py-3.5 bg-slate-50 dark:bg-[#0f172a] border-t border-slate-100 dark:border-slate-800/50 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
           style={{ '--hover-color': subjectColor } as any}
           onMouseEnter={(e) => (e.currentTarget.style.color = subjectColor)}
           onMouseLeave={(e) => (e.currentTarget.style.color = '')}
@@ -234,16 +261,13 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [themeOrderMode, setThemeOrderMode] = useState<'by-priority' | 'manual'>('by-priority');
 
-  // Check if subject is completed (using themes if available, otherwise fallback to topics for now)
-  // In a real migration, we would use subject.themes. For now, we assume topics are themes or use a placeholder.
-  // Since the prompt asks to use isSubjectCompleted from Prompt 1 which expects Theme[], 
-  // and the current Subject model has Topic[], we need to be careful.
-  // The prompt says "A Theme lives inside a Subject". 
-  // We will assume for this step that we are adding the UI to create themes, 
-  // even if the Subject model might not fully support them yet in the legacy code.
-  // We will cast or mock for the visibility check as requested.
-  const isCompleted = false; // Placeholder until Subject model is fully migrated to include themes
+  // Check if subject is completed (all topics are completed)
+  const isCompleted = useMemo(() => {
+    if (!subject.topics || subject.topics.length === 0) return false;
+    return subject.topics.every(t => t.isCompleted);
+  }, [subject.topics]);
 
   const handleDragStart = (index: number) => setDraggedIndex(index);
   const handleDragEnter = (index: number) => {
@@ -256,7 +280,12 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
       const newTopics = [...subject.topics];
       const [removed] = newTopics.splice(draggedIndex, 1);
       newTopics.splice(dragOverIndex, 0, removed);
-      onUpdateTopics(subject.id, newTopics);
+      
+      // Update order field for all topics to reflect new manual order
+      const updatedTopics = newTopics.map((t, i) => ({ ...t, order: i }));
+      
+      onUpdateTopics(subject.id, updatedTopics);
+      setThemeOrderMode('manual');
     }
     setDraggedIndex(null);
     setDragOverIndex(null);
@@ -267,6 +296,23 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
       t.id === topicId ? { ...t, isCompleted: !t.isCompleted } : t
     );
     onUpdateTopics(subject.id, newTopics);
+  };
+
+  const handlePriorityChange = (topicId: string, priority: 1|2|3|4|5) => {
+    const newTopics = subject.topics.map(t => 
+      t.id === topicId ? { ...t, priority } : t
+    );
+    
+    // Trigger priority sort and set mode to by-priority
+    const sortedTopics = sortThemesByPriority(newTopics);
+    onUpdateTopics(subject.id, sortedTopics);
+    setThemeOrderMode('by-priority');
+  };
+
+  const handleRestorePriorityOrder = () => {
+    const sortedTopics = sortThemesByPriority(subject.topics);
+    onUpdateTopics(subject.id, sortedTopics);
+    setThemeOrderMode('by-priority');
   };
 
   // Cálculos de Estatísticas
@@ -328,11 +374,39 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
         
         {/* Edit Mode Banner */}
         {isEditMode && (
-          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-xl p-3 flex items-center justify-center gap-2 animate-in slide-in-from-top-2 duration-300">
-            <span className="material-icons-round text-blue-500 text-sm">drag_indicator</span>
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-              Modo de edição — Arraste para reordenar
-            </span>
+          <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <span className="material-icons-round text-blue-500 text-xl">drag_indicator</span>
+              <div>
+                <span className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide block">
+                  Modo de edição
+                </span>
+                <span className="text-xs text-blue-500/80 dark:text-blue-400/80 font-medium">
+                  Arraste para reordenar ou altere as estrelas para definir a prioridade.
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/50 dark:bg-slate-900/50 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/70 dark:text-blue-400/70">
+                  Ordem:
+                </span>
+                <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                  {themeOrderMode === 'by-priority' ? 'Por Prioridade' : 'Manual'}
+                </span>
+              </div>
+              
+              {themeOrderMode === 'manual' && (
+                <button
+                  onClick={handleRestorePriorityOrder}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800/50 text-xs font-bold transition-colors shadow-sm"
+                >
+                  <span className="material-icons-round text-sm">sort</span>
+                  Restaurar Prioridade
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -499,6 +573,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
                   onDragStart={handleDragStart}
                   onDragEnter={handleDragEnter}
                   onDragEnd={handleDragEnd}
+                  onPriorityChange={handlePriorityChange}
                   isDragging={draggedIndex === subject.topics.indexOf(topic)}
                   isDropTarget={dragOverIndex === subject.topics.indexOf(topic)}
                   isEditMode={isEditMode}
@@ -529,6 +604,7 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
         <ThemeCreationForm
           subjectId={subject.id}
           currentThemeCount={subject.topics.length} // Using topics length as proxy for now
+          subjectPriority={(subject.priority as 1|2|3|4|5) || 1}
           onThemeCreated={(theme) => {
             // Stub handler as requested
             console.log('New Theme Created:', theme);
@@ -546,10 +622,10 @@ const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
           {/* Add Theme Button (New) */}
           <button 
             onClick={() => setIsThemeFormOpen(true)}
-            className="flex items-center gap-3 px-5 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-95 transition-all group"
+            className="flex items-center gap-3 px-5 py-3 bg-slate-800 dark:bg-slate-800 text-slate-200 rounded-full shadow-lg border border-slate-700 hover:bg-slate-700 active:scale-95 transition-all group"
           >
-            <span className="text-xs font-bold uppercase tracking-widest">Adicionar Tema</span>
-            <span className="material-icons-round text-xl text-blue-500">library_add</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Adicionar Tema</span>
+            <span className="material-icons-round text-lg text-blue-500">post_add</span>
           </button>
 
           {/* Existing Add Topic Button (Legacy) */}

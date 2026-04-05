@@ -25,7 +25,7 @@ export interface ManualCycleDecisionState {
 
 interface UseManualCycleDecisionProps {
   isAutoCycle: boolean;
-  activeTheme: Theme;
+  activeTheme: Theme | null;
   nextSubjectName: string | null;
   onContinue: () => void;
   onChangeSubject: () => void;
@@ -57,7 +57,7 @@ export const useManualCycleDecision = ({
     // Only activate in Manual Mode
     if (isAutoCycle) return;
 
-    const isComplete = isThemeCompleted(activeTheme);
+    const isComplete = activeTheme ? isThemeCompleted(activeTheme) : false;
     
     setState({
       phase: 'pending',

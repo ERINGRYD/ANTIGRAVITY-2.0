@@ -25,6 +25,12 @@ Each entry uses these change type labels:
 
 Changes that are built but not yet fully integrated or complete.
 
+### 🐛 FIXED / DEBUGGING
+- **BattleQuestionView Question Shuffling:** Fixed a critical bug where the active question would change every second. The `topicQuestions` array was being recreated on every render (triggered by the 1-second timer), causing the `activeQuestions` useMemo to re-run and re-shuffle the questions continuously. Wrapped the question filtering and mapping logic in a `useMemo` to stabilize the array reference.
+  - File modified: `src/components/BattleQuestionView.tsx`
+- **CombatView Enemy Generation:** Added extensive logging to `CombatView.tsx` and `AppContext.tsx` to diagnose why enemies were not appearing in the rooms. Fixed an issue with the `filters` state initialization in `CombatView.tsx` to correctly synchronize the `subject` filter when `subjectId` is provided.
+  - Files modified: `src/components/CombatView.tsx`, `src/contexts/AppContext.tsx`
+
 ### ✅ ADDED (partial — not yet connected)
 - `useStudyTimer` hook: dual-counter timer tracking cycleTime (capped at goal) and themeTime (uncapped) simultaneously.
   - File: `src/hooks/useStudyTimer.ts`

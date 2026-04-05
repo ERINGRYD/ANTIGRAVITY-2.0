@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
+import { requestNotificationPermission, subscribeUserToPush } from '../utils/pushNotifications';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -7,11 +8,33 @@ interface SettingsViewProps {
 
 const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
   const { unifyTabsPreference, setUnifyTabsPreference, setQuestions } = useApp();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
 
   const handleResetQuestions = () => {
-    if (window.confirm('Tem certeza que deseja apagar todas as questões? Esta ação não pode ser desfeita.')) {
-      setQuestions([]);
-      alert('Banco de questões limpo com sucesso!');
+    // Removing window.confirm and alert due to iframe restrictions
+    setQuestions([]);
+  };
+
+  const handleToggleNotifications = async () => {
+    if (notificationsEnabled) {
+      // Cannot easily revoke permission via JS, just update state visually
+      console.log('Notificações já estão ativas. Para desativar, acesse as configurações do navegador.');
+      return;
+    }
+
+    const granted = await requestNotificationPermission();
+    setNotificationsEnabled(granted);
+    
+    if (granted) {
+      // In a real app, you would use your actual VAPID public key here
+      // const subscription = await subscribeUserToPush('YOUR_PUBLIC_VAPID_KEY_HERE');
+      console.log('Permissão concedida para notificações push.');
     }
   };
 
@@ -75,7 +98,51 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
               </button>
             </div>
 
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">Notificações Push</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Receba alertas sobre metas e ciclos de estudo.</p>
+              </div>
+              
+              {/* Toggle Switch */}
+              <button 
+                onClick={handleToggleNotifications}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                  notificationsEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-700'
+                }`}
+                role="switch"
+                aria-checked={notificationsEnabled}
+                aria-label="Ativar Notificações Push"
+              >
+                <span className="sr-only">Ativar Notificações</span>
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    notificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
             <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+              <button 
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('navigate', { detail: 'editalOnboarding' }));
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all group mb-4"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-800 text-indigo-500 shadow-sm group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined">assignment</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">Perfil do Edital</h3>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-bold">Configurar pesos das matérias</p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-gray-300 group-hover:text-indigo-500 transition-colors">chevron_right</span>
+              </button>
+
               <button 
                 onClick={() => {
                   // Custom event to navigate to sounds

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 
 interface QuestionResult {
   id: number;
@@ -8,6 +9,7 @@ interface QuestionResult {
   selectedOptionId: string;
   correctOptionId: string;
   explanation: string;
+  confidence: 'certain' | 'doubtful' | 'guess';
   options: { id: string; text: string }[];
 }
 
@@ -39,9 +41,10 @@ interface BattleResultsViewProps {
   results: SessionResults;
   onFinish: (errorReasons: Record<number, string>) => void;
   sessionSummary?: SessionSummary;
+  mode?: string;
 }
 
-const BattleResultsView: React.FC<BattleResultsViewProps> = ({ results, onFinish, sessionSummary }) => {
+const BattleResultsView: React.FC<BattleResultsViewProps> = ({ results, onFinish, sessionSummary, mode }) => {
   const [filter, setFilter] = useState<'todos' | 'certeza' | 'duvida' | 'chute'>('todos');
   const [errorReasons, setErrorReasons] = useState<Record<number, string>>({});
 
@@ -54,16 +57,30 @@ const BattleResultsView: React.FC<BattleResultsViewProps> = ({ results, onFinish
       ...prev,
       [questionId]: reason
     }));
-    // In a real app, you would save this to the backend here
     console.log(`Motivo do erro na questão ${questionId}: ${reason}`);
   };
 
   const missedQuestions = results.questions.filter(q => !q.isCorrect);
   const allReasonsSelected = missedQuestions.every(q => errorReasons[q.id]);
+  const accuracyPercent = Math.round((results.accuracy.correct / results.accuracy.total) * 100);
+  
+  const isVictory = accuracyPercent >= 70;
+  const isPerfect = accuracyPercent === 100;
+
+  const confidenceMap: Record<string, string> = {
+    'certain': 'certeza',
+    'doubtful': 'duvida',
+    'guess': 'chute'
+  };
+
+  const filteredQuestions = results.questions.filter(q => {
+    if (filter === 'todos') return true;
+    return confidenceMap[q.confidence] === filter;
+  });
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#f6f7f8] dark:bg-[#111821] font-['Inter'] text-slate-900 dark:text-slate-100 flex flex-col min-h-screen overflow-y-auto">
-      <header className="sticky top-0 z-20 bg-white/80 dark:bg-[#111821]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+    <div className="absolute inset-0 z-50 bg-[#f6f7f8] dark:bg-[#0B1120] font-['Inter'] text-slate-900 dark:text-slate-100 flex flex-col min-h-screen overflow-y-auto no-scrollbar">
+      <header className="sticky top-0 z-20 bg-white/80 dark:bg-[#0B1120]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-md mx-auto flex items-center p-4">
           <button 
             onClick={handleFinish} 
@@ -72,303 +89,322 @@ const BattleResultsView: React.FC<BattleResultsViewProps> = ({ results, onFinish
           >
             <span className="material-symbols-outlined block">arrow_back</span>
           </button>
-          <h1 className="flex-1 text-center text-lg font-bold tracking-tight">Resultados da Investigação</h1>
+          <h1 className="flex-1 text-center text-lg font-bold tracking-tight uppercase">Relatório de Missão</h1>
           <div className="w-10"></div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-md mx-auto w-full flex flex-col">
-        <div className="p-4 space-y-3">
+      <main className="flex-1 max-w-md mx-auto w-full flex flex-col pb-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 space-y-4"
+        >
+          {/* Victory/Defeat Banner */}
+          <div className={`rounded-[32px] p-8 text-center relative overflow-hidden shadow-2xl ${
+            isPerfect ? 'bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600' :
+            isVictory ? 'bg-gradient-to-br from-emerald-500 to-teal-700' :
+            'bg-gradient-to-br from-slate-700 to-slate-900'
+          }`}>
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <span className="material-symbols-outlined text-9xl">
+                {isPerfect ? 'workspace_premium' : isVictory ? 'military_tech' : 'skull'}
+              </span>
+            </div>
+            
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+            >
+              <span className="material-symbols-outlined text-6xl text-white mb-2 font-variation-fill">
+                {isPerfect ? 'auto_awesome' : isVictory ? 'emoji_events' : 'flag'}
+              </span>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none mb-1">
+                {isPerfect ? 'PERFEITO!' : isVictory ? 'VITÓRIA!' : 'MISSÃO CONCLUÍDA'}
+              </h2>
+              <p className="text-white/80 text-xs font-bold uppercase tracking-widest">
+                {mode ? `MODO: ${mode.toUpperCase()}` : 'COMBATE FINALIZADO'}
+              </p>
+            </motion.div>
+
+            <div className="mt-6 flex justify-center gap-8">
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Precisão</p>
+                <p className="text-2xl font-black text-white">{accuracyPercent}%</p>
+              </div>
+              <div className="w-px h-10 bg-white/20 self-center"></div>
+              <div className="text-center">
+                <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">XP Ganho</p>
+                <div className="flex items-center justify-center gap-1">
+                  <span className="material-symbols-outlined text-amber-300 text-sm font-variation-fill">stars</span>
+                  <p className="text-2xl font-black text-white">+{results.totalXp}</p>
+                </div>
+              </div>
+            </div>
+
+            {isVictory && (
+              <motion.div 
+                initial={{ scale: 2, opacity: 0, rotate: -20 }}
+                animate={{ scale: 1, opacity: 1, rotate: -12 }}
+                transition={{ delay: 0.8, type: 'spring' }}
+                className="absolute bottom-4 right-4 border-4 border-white/30 rounded-full p-2 rotate-[-12deg]"
+              >
+                <div className="border-2 border-white/30 rounded-full px-3 py-1">
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">APROVADO</span>
+                </div>
+              </motion.div>
+            )}
+          </div>
+
           {sessionSummary && (
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg mb-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="material-symbols-outlined text-white/80">auto_awesome</span>
-                <h3 className="font-bold text-sm tracking-wide uppercase">Atualização de Sala</h3>
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-indigo-500 text-xl">trending_up</span>
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-white">Evolução do Tópico</h3>
               </div>
               
-              <div className="flex items-center justify-between bg-white/10 rounded-xl p-4 backdrop-blur-sm">
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Anterior</span>
-                  <span className="font-bold capitalize">{sessionSummary.previousRoom}</span>
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700">
+                <div className="text-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Anterior</span>
+                  <span className="text-sm font-bold text-slate-600 dark:text-slate-400 capitalize">{sessionSummary.previousRoom}</span>
                 </div>
                 
-                <div className="flex flex-col items-center px-4">
-                  <span className="material-symbols-outlined text-white/50">arrow_forward</span>
+                <div className="flex flex-col items-center px-2">
+                  <span className="material-symbols-outlined text-indigo-500 animate-pulse">double_arrow</span>
                 </div>
                 
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest mb-1">Nova Sala</span>
-                  <span className="font-bold capitalize text-green-300">{sessionSummary.newRoom}</span>
+                <div className="text-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Nova Sala</span>
+                  <span className="text-sm font-black text-emerald-500 capitalize">{sessionSummary.newRoom}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 mt-4">
-                <div className="bg-white/10 rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-white/60 font-bold uppercase">Score</div>
-                  <div className="font-bold">{sessionSummary.weightedScore}</div>
+              <div className="grid grid-cols-3 gap-3 mt-4">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700">
+                  <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">Score</div>
+                  <div className="font-black text-slate-800 dark:text-white">{sessionSummary.weightedScore}</div>
                 </div>
-                <div className="bg-white/10 rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-white/60 font-bold uppercase">Acurácia</div>
-                  <div className="font-bold">{sessionSummary.accuracyRate}%</div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700">
+                  <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">Acurácia</div>
+                  <div className="font-black text-slate-800 dark:text-white">{sessionSummary.accuracyRate}%</div>
                 </div>
-                <div className="bg-white/10 rounded-lg p-2 text-center">
-                  <div className="text-[10px] text-white/60 font-bold uppercase">Estabilidade</div>
-                  <div className="font-bold">{sessionSummary.memoryStability}d</div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 text-center border border-slate-100 dark:border-slate-700">
+                  <div className="text-[9px] text-slate-400 font-bold uppercase mb-1">Estabilidade</div>
+                  <div className="font-black text-slate-800 dark:text-white">{sessionSummary.memoryStability}d</div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          <div className="space-y-3">
-            {/* XP Card */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5 flex flex-col items-center text-center">
-              <span className="material-symbols-outlined text-blue-500 text-4xl mb-1 font-variation-fill">military_tech</span>
-              <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">XP Total Ganho</p>
-              <p className="text-blue-500 text-3xl font-black">+{results.totalXp} XP</p>
-              <p className="text-green-500 text-xs font-bold mt-1">Bônus de Sequência +15%</p>
+          {/* Stats Grid */}
+          <div className="grid gap-3 grid-cols-2">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-blue-500 text-xl">schedule</span>
+                <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">Tempo Total</p>
+              </div>
+              <p className="font-black text-2xl text-slate-800 dark:text-white">{results.totalTime}</p>
             </div>
-
-            {/* Stats Grid */}
-            <div className="grid gap-3 grid-cols-3">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-amber-500 text-lg">target</span>
-                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">Precisão</p>
-                </div>
-                <p className="font-bold text-xl">{results.accuracy.correct}/{results.accuracy.total}</p>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 rounded-full mt-2">
-                  <div 
-                    className="bg-amber-500 h-full rounded-full" 
-                    style={{ width: `${(results.accuracy.correct / results.accuracy.total) * 100}%` }}
-                  ></div>
-                </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-emerald-500 text-xl">timer</span>
+                <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">Média/Questão</p>
               </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-blue-500 text-lg">schedule</span>
-                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">Tempo</p>
-                </div>
-                <p className="font-bold text-xl">{results.totalTime}</p>
-              </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-green-500 text-lg">timer</span>
-                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest">Média</p>
-                </div>
-                <p className="text-xl font-bold">{results.averageTime}</p>
-                <p className="text-slate-400 dark:text-slate-500 text-[8px] mt-1 uppercase font-bold">p/ Questão</p>
-              </div>
+              <p className="font-black text-2xl text-slate-800 dark:text-white">{results.averageTime}</p>
             </div>
+          </div>
 
-            {/* Confidence Level */}
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-5 overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-slate-900 dark:text-slate-100 text-lg font-bold">Nível de Confiança</h3>
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">GERAL</span>
-              </div>
-              <div className="w-full h-3 flex rounded-full overflow-hidden mb-6 bg-slate-100 dark:bg-slate-700">
-                <div className="h-full bg-green-500" style={{ width: `${results.confidenceStats.certeza}%` }}></div>
-                <div className="h-full bg-amber-500" style={{ width: `${results.confidenceStats.duvida}%` }}></div>
-                <div className="h-full bg-blue-500" style={{ width: `${results.confidenceStats.chute}%` }}></div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="flex flex-col items-center p-2 rounded-xl bg-green-500/5 border border-green-500/10">
-                  <span className="text-[9px] font-bold text-green-500 mb-0.5 tracking-wider uppercase">Certeza</span>
-                  <span className="text-lg font-bold text-green-500">{results.confidenceStats.certeza}%</span>
-                </div>
-                <div className="flex flex-col items-center p-2 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                  <span className="text-[9px] font-bold text-amber-500 mb-0.5 tracking-wider uppercase">Dúvida</span>
-                  <span className="text-lg font-bold text-amber-500">{results.confidenceStats.duvida}%</span>
-                </div>
-                <div className="flex flex-col items-center p-2 rounded-xl bg-blue-500/5 border border-blue-500/10">
-                  <span className="text-[9px] font-bold text-blue-500 mb-0.5 tracking-wider uppercase">Chute</span>
-                  <span className="text-lg font-bold text-blue-500">{results.confidenceStats.chute}%</span>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                <p className="text-slate-500 dark:text-slate-400 text-[10px]">Baseado em {results.accuracy.total} questões respondidas</p>
-                <button className="text-blue-500 text-[10px] font-bold hover:underline uppercase tracking-wider">Ver Detalhes</button>
-              </div>
+          {/* Confidence Level */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-slate-800 dark:text-white text-base font-bold">Nível de Confiança</h3>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">ANÁLISE</span>
             </div>
-
-            {/* Filter */}
-            <div className="mt-4 mb-2 space-y-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Filtrar por Nível</p>
-              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                <button 
-                  onClick={() => setFilter('todos')}
-                  className={`flex-none px-4 py-2 rounded-full text-xs font-bold shadow-sm transition-all ${filter === 'todos' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
-                >
-                  Todos
-                </button>
-                <button 
-                  onClick={() => setFilter('certeza')}
-                  className={`flex-none px-4 py-2 rounded-full text-xs font-bold border transition-all ${filter === 'certeza' ? 'bg-green-500 text-white border-green-500' : 'bg-white dark:bg-slate-800 text-green-500 border-green-500/20 hover:bg-green-500/5'}`}
-                >
-                  Certeza
-                </button>
-                <button 
-                  onClick={() => setFilter('duvida')}
-                  className={`flex-none px-4 py-2 rounded-full text-xs font-bold border transition-all ${filter === 'duvida' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white dark:bg-slate-800 text-amber-500 border-amber-500/20 hover:bg-amber-500/5'}`}
-                >
-                  Dúvida
-                </button>
-                <button 
-                  onClick={() => setFilter('chute')}
-                  className={`flex-none px-4 py-2 rounded-full text-xs font-bold border transition-all ${filter === 'chute' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white dark:bg-slate-800 text-blue-500 border-blue-500/20 hover:bg-blue-500/5'}`}
-                >
-                  Chute
-                </button>
+            <div className="w-full h-3 flex rounded-full overflow-hidden mb-6 bg-slate-100 dark:bg-slate-800">
+              <div className="h-full bg-emerald-500" style={{ width: `${results.confidenceStats.certeza}%` }}></div>
+              <div className="h-full bg-amber-500" style={{ width: `${results.confidenceStats.duvida}%` }}></div>
+              <div className="h-full bg-rose-500" style={{ width: `${results.confidenceStats.chute}%` }}></div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
+                <span className="text-[9px] font-bold text-emerald-500 mb-1 uppercase">Certeza</span>
+                <span className="text-lg font-black text-emerald-500">{results.confidenceStats.certeza}%</span>
+              </div>
+              <div className="flex flex-col items-center p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10">
+                <span className="text-[9px] font-bold text-amber-500 mb-1 uppercase">Dúvida</span>
+                <span className="text-lg font-black text-amber-500">{results.confidenceStats.duvida}%</span>
+              </div>
+              <div className="flex flex-col items-center p-3 rounded-2xl bg-rose-500/5 border border-rose-500/10">
+                <span className="text-[9px] font-bold text-rose-500 mb-1 uppercase">Chute</span>
+                <span className="text-lg font-black text-rose-500">{results.confidenceStats.chute}%</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Question Review */}
-        <div className="p-4 space-y-4">
-          <div className="flex items-center px-1">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Revisão de Questões</h2>
-          </div>
-          
-          {results.questions.map((question, index) => (
-            <div key={`${question.id}-${index}`}>
-              {question.isCorrect ? (
-                <details className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-green-500 text-sm font-variation-fill">check_circle</span>
-                      </div>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">Questão {String(index + 1).padStart(2, '0')} <span className="text-slate-400 text-xs font-normal ml-1">- {question.timeSpent}</span></span>
-                    </div>
-                    <span className="material-symbols-outlined text-slate-400 group-open:rotate-180 transition-transform">expand_more</span>
-                  </summary>
-                  <div className="p-4 border-t border-slate-100 dark:border-slate-800 text-sm text-slate-600 dark:text-slate-400">
-                    Você acertou esta questão! {question.explanation}
-                  </div>
-                </details>
-              ) : (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-red-500/30 overflow-hidden shadow-sm">
-                  <div className="flex items-center justify-between p-4 bg-red-500/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-red-500 text-sm font-variation-fill">cancel</span>
-                      </div>
-                      <span className="font-bold text-slate-900 dark:text-white">Questão {String(index + 1).padStart(2, '0')}</span>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase py-1 px-2 rounded-full bg-red-500 text-white flex items-center">
-                      <span className="mr-2 text-[10px] font-bold text-white/80">{question.timeSpent}</span>Incorreta
-                    </span>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    <p className="text-sm font-medium leading-relaxed">{question.text}</p>
-                    <div className="space-y-2">
-                      {question.options.filter(opt => opt.id === question.selectedOptionId || opt.id === question.correctOptionId).map(option => (
-                        <div 
-                          key={option.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl border ${
-                            option.id === question.correctOptionId 
-                              ? 'border-green-500 bg-green-500/5' 
-                              : 'border-red-500 bg-red-500/5'
-                          }`}
-                        >
-                          <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
-                            option.id === question.correctOptionId 
-                              ? 'bg-green-500 text-white' 
-                              : 'bg-red-500 text-white'
-                          }`}>
-                            {option.id}
-                          </span>
-                          <span className="text-sm text-slate-700 dark:text-slate-300 font-semibold">{option.text}</span>
-                          <span className={`material-symbols-outlined ml-auto text-lg ${
-                            option.id === question.correctOptionId ? 'text-green-500' : 'text-red-500'
-                          }`}>
-                            {option.id === question.correctOptionId ? 'check_circle' : 'close'}
-                          </span>
+          {/* Question Review Section */}
+          <div className="pt-4 space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Revisão de Questões</h2>
+              <div className="flex gap-1">
+                {['todos', 'certeza', 'duvida', 'chute'].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f as any)}
+                    className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase transition-all ${
+                      filter === f 
+                        ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {filteredQuestions.map((question, index) => (
+              <motion.div 
+                key={`${question.id}-${index}`}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 * index }}
+              >
+                {question.isCorrect ? (
+                  <details className="group bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 overflow-hidden transition-all hover:border-emerald-500/30">
+                    <summary className="flex items-center justify-between p-5 cursor-pointer list-none">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-emerald-500 text-xl font-variation-fill">check_circle</span>
                         </div>
-                      ))}
-                    </div>
-                    <div className="bg-blue-500/5 dark:bg-blue-500/10 border-l-4 border-blue-500 p-4 rounded-r-xl">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="material-symbols-outlined text-blue-500 text-sm">lightbulb</span>
-                        <span className="text-xs font-bold text-blue-500 uppercase">Explicação</span>
+                        <div>
+                          <span className="font-bold text-slate-800 dark:text-white block">Questão {String(index + 1).padStart(2, '0')}</span>
+                          <span className="text-slate-400 text-[10px] font-bold uppercase">{question.timeSpent} • {confidenceMap[question.confidence]}</span>
+                        </div>
                       </div>
-                      <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                        {question.explanation}
+                      <span className="material-symbols-outlined text-slate-300 group-open:rotate-180 transition-transform">expand_more</span>
+                    </summary>
+                    <div className="p-6 border-t border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed italic">
+                        "{question.text}"
                       </p>
+                      <div className="mt-4 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          {question.explanation}
+                        </p>
+                      </div>
                     </div>
-                    <div className={`pt-2 p-3 rounded-2xl transition-all ${!errorReasons[question.id] ? 'border-2 border-blue-500 bg-blue-500/5' : ''}`}>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-3 text-center tracking-widest">Qual foi o motivo do erro?</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button 
-                          onClick={() => handleErrorReasonSelect(question.id, 'Interpretação')}
-                          className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-colors text-xs font-medium ${
-                            errorReasons[question.id] === 'Interpretação'
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                              : 'border-slate-200 dark:border-slate-700 hover:border-blue-500/50 bg-white dark:bg-slate-900'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-blue-500 text-sm">search</span>
-                          Interpretação
-                        </button>
-                        <button 
-                          onClick={() => handleErrorReasonSelect(question.id, 'Conteúdo')}
-                          className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-colors text-xs font-medium ${
-                            errorReasons[question.id] === 'Conteúdo'
-                              ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                              : 'border-slate-200 dark:border-slate-700 hover:border-amber-500/50 bg-white dark:bg-slate-900'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-amber-500 text-sm">menu_book</span>
-                          Conteúdo
-                        </button>
-                        <button 
-                          onClick={() => handleErrorReasonSelect(question.id, 'Distração')}
-                          className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-colors text-xs font-medium ${
-                            errorReasons[question.id] === 'Distração'
-                              ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                              : 'border-slate-200 dark:border-slate-700 hover:border-red-500/50 bg-white dark:bg-slate-900'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-red-500 text-sm">bolt</span>
-                          Distração
-                        </button>
-                        <button 
-                          onClick={() => handleErrorReasonSelect(question.id, 'Outro')}
-                          className={`flex items-center justify-center gap-2 p-3 rounded-xl border transition-colors text-xs font-medium ${
-                            errorReasons[question.id] === 'Outro'
-                              ? 'border-slate-500 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                              : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-900'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-slate-500 text-sm">more_horiz</span>
-                          Outro
-                        </button>
+                  </details>
+                ) : (
+                  <div className="bg-white dark:bg-slate-900 rounded-[32px] border-2 border-rose-500/20 overflow-hidden shadow-sm">
+                    <div className="flex items-center justify-between p-5 bg-rose-500/5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-rose-500 text-xl font-variation-fill">cancel</span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-slate-800 dark:text-white block">Questão {String(index + 1).padStart(2, '0')}</span>
+                          <span className="text-rose-400 text-[10px] font-bold uppercase">{question.timeSpent} • {confidenceMap[question.confidence]}</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-black uppercase py-1 px-3 rounded-full bg-rose-500 text-white">Incorreta</span>
+                    </div>
+                    <div className="p-6 space-y-5">
+                      <p className="text-sm font-bold text-slate-800 dark:text-white leading-relaxed">{question.text}</p>
+                      
+                      <div className="space-y-3">
+                        {question.options.filter(opt => opt.id === question.selectedOptionId || opt.id === question.correctOptionId).map(option => (
+                          <div 
+                            key={option.id}
+                            className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                              option.id === question.correctOptionId 
+                                ? 'border-emerald-500 bg-emerald-500/5' 
+                                : 'border-rose-500 bg-rose-500/5'
+                            }`}
+                          >
+                            <span className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black ${
+                              option.id === question.correctOptionId 
+                                ? 'bg-emerald-500 text-white' 
+                                : 'bg-rose-500 text-white'
+                            }`}>
+                              {option.id}
+                            </span>
+                            <span className="text-sm text-slate-700 dark:text-slate-300 font-bold">{option.text}</span>
+                            <span className={`material-symbols-outlined ml-auto ${
+                              option.id === question.correctOptionId ? 'text-emerald-500' : 'text-rose-500'
+                            }`}>
+                              {option.id === question.correctOptionId ? 'check_circle' : 'close'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bg-blue-500/5 dark:bg-blue-500/10 border-l-4 border-blue-500 p-5 rounded-r-2xl">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="material-symbols-outlined text-blue-500 text-sm">lightbulb</span>
+                          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Análise do QG</span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
+                          {question.explanation}
+                        </p>
+                      </div>
+
+                      <div className={`p-5 rounded-3xl transition-all ${!errorReasons[question.id] ? 'bg-indigo-500/5 border-2 border-dashed border-indigo-500/30' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
+                        <p className="text-[10px] font-black text-slate-400 uppercase mb-4 text-center tracking-widest">Identifique a Falha</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { id: 'Interpretação', icon: 'search' },
+                            { id: 'Conteúdo', icon: 'school' },
+                            { id: 'Distração', icon: 'timer_off' },
+                            { id: 'Outro', icon: 'more_horiz' }
+                          ].map((reason) => (
+                            <button 
+                              key={reason.id}
+                              onClick={() => handleErrorReasonSelect(question.id, reason.id)}
+                              className={`flex items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all text-[11px] font-bold ${
+                                errorReasons[question.id] === reason.id
+                                  ? 'border-indigo-500 bg-indigo-500 text-white'
+                                  : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:border-indigo-500/50'
+                              }`}
+                            >
+                              <span className="material-symbols-outlined text-sm">{reason.icon}</span>
+                              {reason.id}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </motion.div>
+            ))}
+          </div>
 
-          <div className="pt-2 pb-8">
+          <div className="pt-6">
             <button 
               onClick={handleFinish}
               disabled={!allReasonsSelected}
-              className={`w-full font-bold py-4 rounded-2xl shadow-lg transition-all ${
+              className={`w-full font-black text-lg py-5 rounded-[32px] shadow-2xl transition-all transform active:scale-95 ${
                 allReasonsSelected 
-                  ? 'bg-blue-500 text-white shadow-blue-500/20 hover:brightness-110 active:scale-[0.98]' 
-                  : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed shadow-none'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-blue-500/30 hover:brightness-110' 
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
               }`}
             >
-              {allReasonsSelected ? 'Concluir Sessão' : 'Selecione os motivos dos erros'}
+              {allReasonsSelected ? 'CONCLUIR MISSÃO' : 'IDENTIFIQUE OS ERROS'}
             </button>
           </div>
-        </div>
+        </motion.div>
       </main>
     </div>
   );
 };
 
 export default BattleResultsView;
+

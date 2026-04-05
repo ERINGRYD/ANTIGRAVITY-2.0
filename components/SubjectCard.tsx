@@ -16,9 +16,18 @@ import React from 'react';
 import { Subject as LegacySubject } from '../types/storage.types';
 import { SubjectCycleState } from '../types/subjectCycle.types';
 import { Theme } from '../types/theme.types';
+import { KnowledgeLevel } from '../utils/priorityUtils';
+import StarRating from './StarRating';
+import KnowledgeLevelSelector from './KnowledgeLevelSelector';
+import CycleTimeIndicator from './CycleTimeIndicator';
+
+import { groupThemesByPriority, allSamePriority } from '../utils/themePriority';
 
 // Extend the legacy subject to support new fields if they exist, or just use it as is
-type Subject = LegacySubject;
+type Subject = LegacySubject & {
+  priority?: number;
+  knowledgeLevel?: KnowledgeLevel;
+};
 
 interface SubjectCardProps {
   subject: Subject;
@@ -39,6 +48,9 @@ interface SubjectCardProps {
   isDragging?: boolean;
   isDropTarget?: boolean;
   isEditMode?: boolean;
+  cyclePercent?: number;
+  onPriorityChange?: (subjectId: string, priority: number) => void;
+  onLevelChange?: (subjectId: string, level: KnowledgeLevel) => void;
 }
 
 const CircularProgress: React.FC<{ 
@@ -109,7 +121,10 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   onDrop,
   isDragging,
   isDropTarget,
-  isEditMode
+  isEditMode,
+  cyclePercent = 0,
+  onPriorityChange,
+  onLevelChange
 }) => {
   // 1. Derive Themes (Fallback to topics if themes not provided)
   const effectiveThemes: Theme[] = themes || (subject.topics ? subject.topics.map(t => ({
@@ -118,10 +133,12 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
     name: t.name,
     order: 0,
     goalTime: t.totalMinutes,
+    priority: t.priority ?? 3,
     accumulatedTime: t.studiedMinutes,
     isCompleted: t.isCompleted,
     completionSource: null,
     subtopics: [],
+    description: t.description,
     createdAt: '',
     updatedAt: ''
   })) : []);
@@ -205,37 +222,66 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
     >
       {/* Header Section */}
       <div className="flex justify-between items-start mb-6">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              {isState4 ? 'CONCLUÍDA' : `MATÉRIA ${cardIndex + 1}`}
-            </span>
-            {isEditMode && !isState4 && (
-              <span className="material-icons-round text-sm text-slate-300">drag_handle</span>
-            )}
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: `${subject.color}15`, color: subject.color }}
+          >
+            <span className="material-symbols-outlined">{subject.icon || 'school'}</span>
           </div>
-          <h3 className={`text-xl font-black tracking-tight leading-tight ${isState4 ? 'text-slate-500 dark:text-slate-400 line-through decoration-2 decoration-slate-300' : 'text-slate-900 dark:text-white'}`}>
-            {subject.name}
-          </h3>
+          <div>
+            <h3 className={`font-bold tracking-tight leading-tight ${isState4 ? 'text-slate-500 dark:text-slate-400 line-through decoration-2 decoration-slate-300' : 'text-slate-900 dark:text-white'}`}>
+              {subject.name}
+            </h3>
+            <p className="text-[10px] text-slate-500 font-medium">
+              {effectiveThemes.length} tópicos selecionados
+            </p>
+          </div>
         </div>
-
-        {/* Action / Status Icons */}
-        <div className="flex items-center gap-2">
-          {isState1 && !isEditMode && (
-            <button 
-              onClick={handlePlay}
-              className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 hover:scale-110 active:scale-95 transition-all"
-            >
-              <span className="material-icons-round text-xl">play_arrow</span>
-            </button>
-          )}
+        
+        {/* Star Rating & Indicators */}
+        <div className={`flex flex-col items-end gap-3 ${isState1 && !isEditMode ? 'pr-12' : ''}`}>
+          <StarRating 
+            value={subject.priority ?? 3} 
+            onChange={isEditMode && onPriorityChange ? (val) => onPriorityChange(subject.id, val) : undefined}
+            size="sm"
+            accentColor={subject.color}
+          />
           
-          {isState2 && (
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <span className="material-icons-round text-lg">check</span>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {/* Knowledge Level Selector */}
+            <KnowledgeLevelSelector 
+              value={subject.knowledgeLevel ?? 'iniciante'} 
+              onChange={isEditMode && onLevelChange ? (val) => onLevelChange(subject.id, val) : undefined}
+              size="sm"
+            />
+
+            {/* Cycle Time Indicator */}
+            <CycleTimeIndicator 
+              percent={cyclePercent} 
+              subjectColor={subject.color} 
+              showBar={false}
+            />
+          </div>
         </div>
+      </div>
+      
+      {/* Action / Status Icons */}
+      <div className="absolute top-6 right-6 flex items-center gap-2">
+        {isState1 && !isEditMode && (
+          <button 
+            onClick={handlePlay}
+            className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 hover:scale-110 active:scale-95 transition-all"
+          >
+            <span className="material-icons-round text-xl">play_arrow</span>
+          </button>
+        )}
+        
+        {isState2 && (
+          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <span className="material-icons-round text-lg">check</span>
+          </div>
+        )}
       </div>
 
       {/* Content & Cycle Progress Row */}

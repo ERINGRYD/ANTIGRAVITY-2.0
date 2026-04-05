@@ -18,10 +18,12 @@ export function topicToTheme(
     name: topic.name,
     order: index,
     goalTime: topic.totalMinutes ?? 60,
+    priority: topic.priority ?? 3,
     accumulatedTime: topic.studiedMinutes ?? 0,
     isCompleted: topic.isCompleted ?? false,
     completionSource: topic.isCompleted ? 'checklist' : null,
     subtopics: [],
+    description: topic.description,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }

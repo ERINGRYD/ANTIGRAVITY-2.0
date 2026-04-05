@@ -10,11 +10,10 @@ interface EditQuestionViewProps {
 }
 
 const EditQuestionView: React.FC<EditQuestionViewProps> = ({ initialData, onBack, onSave }) => {
-  const [questionType, setQuestionType] = useState<'multipla' | 'certo_errado' | 'flashcard'>(initialData?.questionType || 'multipla');
+  const [questionType, setQuestionType] = useState<'multipla' | 'certo_errado'>(initialData?.questionType || 'multipla');
   const [difficulty, setDifficulty] = useState<'FÁCIL' | 'MÉDIO' | 'DIFÍCIL'>(initialData?.difficulty || 'MÉDIO');
   const [correctAnswerMultipla, setCorrectAnswerMultipla] = useState<string>(initialData?.correctAnswerMultipla || 'A');
   const [correctAnswerCertoErrado, setCorrectAnswerCertoErrado] = useState<string>(initialData?.correctAnswerCertoErrado || 'Certo');
-  const [flashcardAnswer, setFlashcardAnswer] = useState<string>(initialData?.flashcardAnswer || String.raw`O determinante é $det(A) = (1)(4) - (2)(3) = 4 - 6 = -2$.`);
   const [enunciation, setEnunciation] = useState<string>(initialData?.text || String.raw`Dada a matriz $A = \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$, calcule o determinante e assinale a alternativa correta.`);
   const [tags, setTags] = useState<string[]>(initialData?.tags || ['vestibular', 'concursos']);
   const [newTag, setNewTag] = useState('');
@@ -41,7 +40,6 @@ const EditQuestionView: React.FC<EditQuestionViewProps> = ({ initialData, onBack
       options: questionType === 'multipla' ? options : undefined,
       correctAnswerMultipla: questionType === 'multipla' ? correctAnswerMultipla : undefined,
       correctAnswerCertoErrado: questionType === 'certo_errado' ? correctAnswerCertoErrado : undefined,
-      flashcardAnswer: questionType === 'flashcard' ? flashcardAnswer : undefined,
     };
     onSave(updatedData);
   };
@@ -188,12 +186,6 @@ const EditQuestionView: React.FC<EditQuestionViewProps> = ({ initialData, onBack
             >
               Certo/Errado
             </button>
-            <button 
-              onClick={() => setQuestionType('flashcard')}
-              className={`flex-1 py-2 text-[10px] font-black rounded-lg uppercase transition-all ${questionType === 'flashcard' ? 'bg-white dark:bg-slate-700 text-[#1978e5] shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Flashcard
-            </button>
           </div>
           <div className="space-y-3 mt-4">
             {questionType === 'multipla' && (
@@ -250,32 +242,7 @@ const EditQuestionView: React.FC<EditQuestionViewProps> = ({ initialData, onBack
               </>
             )}
 
-            {questionType === 'flashcard' && (
-              <div>
-                <div className="flex justify-between items-center mb-1 ml-1">
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400">VERSO DO FLASHCARD (RESPOSTA)</label>
-                  <span className="text-[10px] font-bold text-[#1978e5] bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-800 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#1978e5]"></span>MODO VISUAL
-                  </span>
-                </div>
-                <textarea 
-                  className="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-[#1978e5] transition-all leading-relaxed mb-3" 
-                  placeholder="Digite a resposta do flashcard aqui..." 
-                  rows={4}
-                  value={flashcardAnswer}
-                  onChange={(e) => setFlashcardAnswer(e.target.value)}
-                />
-                <div className="bg-[#F1F5F9] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-slate-400 text-sm">visibility</span>
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Pré-visualização</span>
-                  </div>
-                  <div className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-serif">
-                    <Latex>{flashcardAnswer}</Latex>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
         </section>
 

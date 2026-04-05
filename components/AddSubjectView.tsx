@@ -11,13 +11,17 @@ interface AddSubjectViewProps {
 
 const COLORS = [
   { name: 'blue', value: '#3B82F6' },
+  { name: 'orange', value: '#F97316' },
   { name: 'green', value: '#10B981' },
-  { name: 'orange', value: '#F59E0B' },
   { name: 'purple', value: '#8B5CF6' },
-  { name: 'pink', value: '#EC4899' },
+  { name: 'rose', value: '#F43F5E' },
   { name: 'cyan', value: '#06B6D4' },
-  { name: 'red', value: '#EF4444' },
+  { name: 'yellow', value: '#EAB308' },
   { name: 'indigo', value: '#6366F1' },
+  { name: 'pink', value: '#EC4899' },
+  { name: 'teal', value: '#14B8A6' },
+  { name: 'amber', value: '#F59E0B' },
+  { name: 'red', value: '#EF4444' },
 ];
 
 const AddSubjectView: React.FC<AddSubjectViewProps> = ({ onBack, onSave }) => {

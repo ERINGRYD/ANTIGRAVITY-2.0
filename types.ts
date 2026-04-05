@@ -24,8 +24,8 @@ export interface Achievement {
   isUnlocked: boolean;
   unlockedAt?: string;
   progress?: number; // 0 to 100
-  goalValue?: string;
-  currentValue?: string;
+  goalValue?: string | number;
+  currentValue?: string | number;
 }
 
 export interface SubTopic {
@@ -48,6 +48,8 @@ export interface Topic {
   completedQuestions: number;
   subTopics?: SubTopic[];
   subItems?: string[];
+  priority?: 1 | 2 | 3 | 4 | 5;
+  description?: string;
 }
 
 // Re-exportando tipos de storage para uso global
@@ -95,10 +97,9 @@ export interface Question {
   text: string;
   status: 'Ativa' | 'Rascunho' | 'Revisão';
   // Add fields for editing
-  questionType?: 'multipla' | 'certo_errado' | 'flashcard';
+  questionType?: 'multipla' | 'certo_errado';
   correctAnswerMultipla?: string;
   correctAnswerCertoErrado?: string;
-  flashcardAnswer?: string;
   enunciation?: string;
   tags?: string[];
   explanation?: string;

@@ -4,7 +4,7 @@
 > **Started:** 2026-03-17  
 > **Target end:** 2026-03-31  
 > **Focus:** Resolve the dual data model technical debt and integrate the new timer hooks.  
-> **Last updated:** 2026-03-17
+> **Last updated:** 2026-03-22
 
 ---
 
@@ -212,6 +212,24 @@ Data models are unified, local export is working, and a clear authentication flo
 | B-001 | Orphaned Archived Enemies | Medium | `AppContext.tsx` | 📋 Ready (T-005) |
 | B-002 | No schema versioning | Medium | `usePersistedState.ts` | 📋 Ready |
 | B-003 | Unbounded studyHistory growth | Low | `AppContext.tsx` | 📋 Ready |
+| B-004 | Enemies not appearing in CombatView | High | `CombatView.tsx` | 🔄 In Progress |
+| B-005 | Question changes every second in Battle | Critical | `BattleQuestionView.tsx` | ✅ Done |
+
+### B-005 — Question changes every second in Battle
+**Severity:** Critical  
+**File:** `src/components/BattleQuestionView.tsx`  
+**Symptom:** The active question changes automatically every second during a battle.  
+**Root cause:** The `topicQuestions` array was not memoized, causing it to be recreated on every render. The 1-second timer triggered continuous re-renders, which in turn caused the `activeQuestions` useMemo to re-run and re-shuffle the questions.  
+**Fix approach:** Wrapped the `topicQuestions` creation logic in a `useMemo` hook to stabilize the array reference.  
+**Acceptance criteria:** The question remains stable until the user answers it or the time runs out.
+
+### B-004 — Enemies not appearing in CombatView
+**Severity:** High  
+**File:** `src/components/CombatView.tsx`, `src/contexts/AppContext.tsx`  
+**Symptom:** No questions appear and no enemies are added to the rooms.  
+**Root cause:** Under investigation. Suspected data initialization or filter synchronization issue.  
+**Fix approach:** Added extensive logging to track data flow and fixed `filters` state initialization.  
+**Acceptance criteria:** Enemies are correctly generated and displayed in their respective rooms based on topics and questions.
 
 ### B-002 — No schema versioning
 **Severity:** Medium  
@@ -224,6 +242,10 @@ Data models are unified, local export is working, and a clear authentication flo
 ---
 
 ## Session Log
+
+**Session 2026-03-22 (Current):**
+  - **In Progress:** B-004 (Enemies not appearing in CombatView) — Added extensive logging to `CombatView.tsx` and `AppContext.tsx` to trace data initialization and filter synchronization. Fixed an issue where the `subject` filter was not correctly initialized when `subjectId` was passed.
+  - **Next steps:** Analyze the new logs to pinpoint why enemies are not being generated or displayed.
 
 **Session 2026-03-17:**
   - **Completed:** Sprint planning and documentation generation (`GLOBAL.md`, `PRD.md`, `DATABASE.md`, `CHANGELOG.md`, `SPRINT_ATUAL.md`).

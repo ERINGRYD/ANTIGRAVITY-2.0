@@ -21,13 +21,6 @@ interface TriagemItem {
 
 type SortOption = 'relevancia' | 'xp_desc' | 'xp_asc' | 'nome';
 
-const TRIAGEM_DATA: TriagemItem[] = [
-  { id: 't1', subject: 'Geografia', topic: 'Geografia - Clima', description: 'Massas de ar, biomas e fenômenos.', xp: 450, icon: 'cloudy_snowing', color: '#8B5CF6' },
-  { id: 't2', subject: 'Biologia', topic: 'Biologia - Genética', description: 'Leis de Mendel e biotecnologia.', xp: 600, icon: 'genetics', color: '#10B981' },
-  { id: 't3', subject: 'História', topic: 'Brasil Colonial', description: 'Economia açucareira e revoltas.', xp: 380, icon: 'account_balance', color: '#F59E0B' },
-  { id: 't4', subject: 'Química', topic: 'Cálculo Químico', description: 'Massa molar e gases ideais.', xp: 520, icon: 'science', color: '#EC4899' },
-];
-
 /* Subcomponents for FrontLineView */
 
 const TriagemCard: React.FC<{ item: TriagemItem; onStart: () => void }> = ({ item, onStart }) => (
@@ -213,9 +206,7 @@ const FrontLineView: React.FC<FrontLineViewProps> = ({ subject, onBack, onDefend
     loadArchived();
   }, []);
 
-  const enemies = subject.topics.length > 0 ? subject.topics : [
-    { id: 'mock1', name: 'Tópico de Exemplo', icon: 'pest_control_rodent', studiedMinutes: 0, totalMinutes: 0, totalQuestions: 10, completedQuestions: 0, isCompleted: false }
-  ];
+  const enemies = subject.topics;
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -230,7 +221,24 @@ const FrontLineView: React.FC<FrontLineViewProps> = ({ subject, onBack, onDefend
 
   // Lógica de Filtragem e Ordenação
   const filteredTriagem = useMemo(() => {
-    let result = TRIAGEM_DATA.filter(item => 
+    // Generate triagem based on real topics that are not completed and have low accuracy or are behind schedule
+    const realTriagemData: TriagemItem[] = subject.topics
+      .filter(t => !t.isCompleted)
+      .map(t => {
+        // Calcula o XP baseado no total de questões ou usa um valor padrão
+        const xp = t.totalQuestions > 0 ? t.totalQuestions * 10 : 100;
+        return {
+          id: t.id,
+          subject: subject.name,
+          topic: t.name,
+          description: `Tópico pendente de ${subject.name}. Continue estudando para dominar este assunto.`,
+          xp: xp,
+          icon: t.icon || subject.icon,
+          color: subject.color
+        };
+      });
+
+    let result = realTriagemData.filter(item => 
       item.topic.toLowerCase().includes(searchQuery.toLowerCase()) || 
       item.subject.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -241,7 +249,7 @@ const FrontLineView: React.FC<FrontLineViewProps> = ({ subject, onBack, onDefend
       case 'nome': result.sort((a, b) => a.topic.localeCompare(b.topic)); break;
     }
     return result;
-  }, [searchQuery, sortBy]);
+  }, [subject, searchQuery, sortBy]);
 
   const filteredVencidos = useMemo(() => {
     let result = archivedEnemies.filter(item => 
@@ -289,10 +297,21 @@ const FrontLineView: React.FC<FrontLineViewProps> = ({ subject, onBack, onDefend
         return filteredTriagem.length > 0 ? (
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in zoom-in duration-300">
             {filteredTriagem.map((item) => (
-              <TriagemCard key={item.id} item={item} onStart={() => console.log('Investigação iniciada:', item.topic)} />
+              <TriagemCard key={item.id} item={item} onStart={() => {
+                const topic = subject.topics.find(t => t.id === item.id);
+                if (topic) onDefender(topic);
+              }} />
             ))}
           </section>
-        ) : <EmptySearchState />;
+        ) : (
+          <div className="py-20 flex flex-col items-center text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-slate-300 text-4xl">check_circle</span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Tudo em dia!</h3>
+            <p className="text-slate-500 text-sm max-w-xs mx-auto">Não há tópicos pendentes precisando de triagem no momento.</p>
+          </div>
+        );
       case 'vencidos':
         return filteredVencidos.length > 0 ? (
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in zoom-in duration-300">
@@ -328,7 +347,15 @@ const FrontLineView: React.FC<FrontLineViewProps> = ({ subject, onBack, onDefend
               );
             })}
           </section>
-        ) : <EmptySearchState />;
+        ) : (
+          <div className="py-20 flex flex-col items-center text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-slate-300 text-4xl">shield</span>
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Linha de Frente Vazia</h3>
+            <p className="text-slate-500 text-sm max-w-xs mx-auto">Adicione tópicos à disciplina para começar a defender a linha de frente.</p>
+          </div>
+        );
     }
   };
 

@@ -26,98 +26,241 @@ interface BattleQuestionViewProps {
   mixSubjects?: boolean;
   selectedSubjectIds?: string[];
   selectedTopicIds?: string[];
+  sessionTimeLimit?: number; // in seconds
+  distributionMode?: string;
 }
 
 const MOCK_QUESTIONS: any[] = [];
 
-const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 'default', topicId = '', room, questionLimit, mixSubjects, selectedSubjectIds = [], selectedTopicIds = [] }) => {
+const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ 
+  onBack, 
+  mode = 'default', 
+  topicId = '', 
+  room, 
+  questionLimit, 
+  mixSubjects, 
+  selectedSubjectIds = [], 
+  selectedTopicIds = [],
+  sessionTimeLimit = 0,
+  distributionMode = 'aleatorio'
+}) => {
   const { subjects, setSubjects, questions, addStudySession, addXP } = useApp();
   
   const isArenaElite = room === 'sala-2';
   const isLaboratorio = room === 'sala-3';
 
   // Filter questions based on mixSubjects, topicId, selectedSubjectIds, and selectedTopicIds
-  const baseQuestions = questions.filter(q => {
-    if (topicId) {
-      // If we have a topicId, we filter by it (direct combat)
-      return q.topic === topicId;
-    }
-
-    // Room filtering: Only show topics that belong to the selected mode (which corresponds to Ebbinghaus rooms)
-    if (mode && mode !== 'default' && mode !== 'todas') {
-      let targetRoom = mode;
-      if (mode === 'revisao') targetRoom = 'vencidos';
-      
-      // Get current room for this topic from localStorage
-      const currentTopicRoom = localStorage.getItem(`room_${q.topic}`) || 'reconhecimento';
-      
-      let effectiveRoom = currentTopicRoom;
-      
-      // If it's a "vencidos" topic, check if it's returning (which puts it in "alerta")
-      if (currentTopicRoom === 'vencidos') {
-        const archivedEnemies = getArchivedEnemies();
-        const archived = archivedEnemies.find(a => a.topicId === q.topic);
-        if (archived && shouldEnemyReturn(archived)) {
-          effectiveRoom = 'alerta';
-        }
+  const topicQuestions = useMemo(() => {
+    const baseQuestions = questions.filter(q => {
+      if (topicId) {
+        // If we have a topicId, we filter by it (direct combat)
+        return q.topic === topicId;
       }
 
-      if (effectiveRoom !== targetRoom) return false;
-    }
+      // Room filtering: Only show topics that belong to the selected mode (which corresponds to Ebbinghaus rooms)
+      if (mode && mode !== 'default' && mode !== 'todas') {
+        let targetRoom = mode;
+        if (mode === 'revisao') targetRoom = 'vencidos';
+        
+        // Get current room for this topic from localStorage
+        const currentTopicRoom = localStorage.getItem(`room_${q.topic}`) || 'reconhecimento';
+        
+        let effectiveRoom = currentTopicRoom;
+        
+        // If it's a "vencidos" topic, check if it's returning (which puts it in "alerta")
+        if (currentTopicRoom === 'vencidos') {
+          const archivedEnemies = getArchivedEnemies();
+          const archived = archivedEnemies.find(a => a.topicId === q.topic);
+          if (archived && shouldEnemyReturn(archived)) {
+            effectiveRoom = 'alerta';
+          }
+        }
 
-    if (mixSubjects) return true;
-    
-    if (selectedTopicIds.length > 0 && (selectedTopicIds.includes(q.topic || ''))) return true;
-    if (selectedSubjectIds.length > 0 && (selectedSubjectIds.includes(q.subject || ''))) return true;
-    
-    return false;
-  });
+        if (effectiveRoom !== targetRoom) return false;
+      }
 
-  // Group questions by topic
-  const groupedQuestions = [...baseQuestions].sort((a, b) => (a.topic || '').localeCompare(b.topic || ''));
+      if (mixSubjects) return true;
+      
+      if (selectedTopicIds.length > 0 && (selectedTopicIds.includes(q.topic || ''))) return true;
+      if (selectedSubjectIds.length > 0 && (selectedSubjectIds.includes(q.subject || ''))) return true;
+      
+      return false;
+    });
 
-  // Laboratório specific filtering: prioritize questions with explanations or higher difficulty
-  const filteredQuestions = isLaboratorio 
-    ? groupedQuestions.sort((a, b) => (b.explanation ? 1 : 0) - (a.explanation ? 1 : 0))
-    : groupedQuestions;
+    // Group questions by topic
+    const groupedQuestions = [...baseQuestions].sort((a, b) => (a.topic || '').localeCompare(b.topic || ''));
 
-  const topicQuestions = filteredQuestions.map(q => {
-    let correctAnswer = '';
-    let options = q.options || [];
-    // Fallback for questionType if missing
-    const type = q.questionType || (options.length > 0 ? 'multipla' : 'certo_errado');
+    // Laboratório specific filtering: prioritize questions with explanations or higher difficulty
+    const filteredQuestions = isLaboratorio 
+      ? groupedQuestions.sort((a, b) => (b.explanation ? 1 : 0) - (a.explanation ? 1 : 0))
+      : groupedQuestions;
 
-    if (type === 'multipla') {
-      correctAnswer = q.correctAnswerMultipla || '';
-    } else if (type === 'certo_errado') {
-      correctAnswer = q.correctAnswerCertoErrado || '';
-      options = [
-        { id: 'Certo', text: 'Certo', isCorrect: correctAnswer === 'Certo' },
-        { id: 'Errado', text: 'Errado', isCorrect: correctAnswer === 'Errado' }
-      ];
-    } else if (type === 'flashcard') {
-      correctAnswer = 'Mostrar Resposta';
-      options = [{ id: 'Mostrar Resposta', text: q.flashcardAnswer || 'Sem resposta', isCorrect: true }];
-    }
+    return filteredQuestions.map(q => {
+      let correctAnswer = '';
+      let options = q.options || [];
+      // Fallback for questionType if missing
+      const type = q.questionType || (options.length > 0 ? 'multipla' : 'certo_errado');
 
-    return {
-      id: q.id,
-      text: q.text || q.enunciation || '',
-      options: options,
-      correctAnswer: correctAnswer,
-      explanation: q.explanation || '',
-      topicId: q.topic || '',
-      difficulty: q.difficulty
+      if (type === 'multipla') {
+        correctAnswer = q.correctAnswerMultipla || '';
+      } else if (type === 'certo_errado') {
+        correctAnswer = q.correctAnswerCertoErrado || '';
+        options = [
+          { id: 'Certo', text: 'Certo', isCorrect: correctAnswer === 'Certo' },
+          { id: 'Errado', text: 'Errado', isCorrect: correctAnswer === 'Errado' }
+        ];
+      }
+
+      return {
+        id: q.id,
+        text: q.text || q.enunciation || '',
+        options: options,
+        correctAnswer: correctAnswer,
+        explanation: q.explanation || '',
+        topicId: q.topic || '',
+        difficulty: q.difficulty
+      };
+    });
+  }, [questions, topicId, mode, mixSubjects, selectedTopicIds, selectedSubjectIds, isLaboratorio]);
+
+  // Apply distribution mode and question limit
+  const activeQuestions = useMemo(() => {
+    let selectedQuestions: typeof topicQuestions = [];
+    const limit = questionLimit || 10;
+
+    // Helper to shuffle array
+    const shuffle = (array: any[]) => {
+      const newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
     };
-  });
 
-  // Apply question limit
-  const activeQuestions = topicQuestions.slice(0, questionLimit || 10);
+    // Helper to map topicId to subjectId
+    const getSubjectIdForTopic = (tId: string) => {
+      for (const subject of subjects) {
+        if (subject.topics.some(t => t.id === tId || t.name === tId)) {
+          return subject.id;
+        }
+      }
+      return 'unknown';
+    };
+
+    if (distributionMode === 'aleatorio') {
+      // Sorteio padrão: embaralha tudo e pega o limite
+      selectedQuestions = shuffle([...topicQuestions]).slice(0, limit);
+    } 
+    else if (distributionMode === 'proporcional_igual') {
+      // Mesma quantidade por matéria
+      const questionsBySubject: Record<string, typeof topicQuestions> = {};
+      topicQuestions.forEach(q => {
+        const sId = getSubjectIdForTopic(q.topicId);
+        if (!questionsBySubject[sId]) questionsBySubject[sId] = [];
+        questionsBySubject[sId].push(q);
+      });
+
+      const subjectIds = Object.keys(questionsBySubject);
+      if (subjectIds.length === 0) return [];
+
+      const questionsPerSubject = Math.max(1, Math.floor(limit / subjectIds.length));
+      let remainingLimit = limit;
+
+      // First pass: take up to questionsPerSubject from each
+      for (const sId of subjectIds) {
+        const shuffled = shuffle(questionsBySubject[sId]);
+        const toTake = Math.min(shuffled.length, questionsPerSubject);
+        selectedQuestions.push(...shuffled.slice(0, toTake));
+        remainingLimit -= toTake;
+        questionsBySubject[sId] = shuffled.slice(toTake); // keep remaining
+      }
+
+      // Second pass: if we still need questions, take from subjects that have remaining
+      if (remainingLimit > 0) {
+        const remainingQuestions = shuffle(Object.values(questionsBySubject).flat());
+        selectedQuestions.push(...remainingQuestions.slice(0, remainingLimit));
+      }
+
+      // Shuffle the final selection so subjects are mixed
+      selectedQuestions = shuffle(selectedQuestions);
+    }
+    else if (distributionMode === 'proporcional_prova') {
+      // Busca os pesos configurados no onboarding global (ex: localStorage)
+      const editalConfig = localStorage.getItem('user_edital_weights');
+      const weights: Record<string, number> = editalConfig ? JSON.parse(editalConfig) : {};
+
+      const questionsBySubject: Record<string, typeof topicQuestions> = {};
+      topicQuestions.forEach(q => {
+        const sId = getSubjectIdForTopic(q.topicId);
+        if (!questionsBySubject[sId]) questionsBySubject[sId] = [];
+        questionsBySubject[sId].push(q);
+      });
+
+      const subjectIds = Object.keys(questionsBySubject);
+      if (subjectIds.length === 0) return [];
+
+      let remainingLimit = limit;
+      
+      for (const sId of subjectIds) {
+        // Se a matéria não tiver peso definido no edital, fazemos um fallback gracioso (distribuição igualitária)
+        const weight = weights[sId] || (1 / subjectIds.length); 
+        const targetCount = Math.round(limit * weight);
+        const shuffled = shuffle(questionsBySubject[sId]);
+        const toTake = Math.min(shuffled.length, targetCount);
+        selectedQuestions.push(...shuffled.slice(0, toTake));
+        remainingLimit -= toTake;
+        questionsBySubject[sId] = shuffled.slice(toTake);
+      }
+
+      // Fill remaining if rounding caused a shortfall
+      if (remainingLimit > 0) {
+        const remainingQuestions = shuffle(Object.values(questionsBySubject).flat());
+        selectedQuestions.push(...remainingQuestions.slice(0, remainingLimit));
+      }
+
+      selectedQuestions = shuffle(selectedQuestions);
+    }
+    else if (distributionMode === 'automatico_ia') {
+      // Foca nas fraquezas (Mock: prioriza tópicos com menor taxa de acerto no localStorage)
+      const topicScores = topicQuestions.map(q => {
+        const statsStr = localStorage.getItem(`topic_stats_${q.topicId}`);
+        let score = 100; // Default high score (not a weakness)
+        if (statsStr) {
+          try {
+            const stats = JSON.parse(statsStr);
+            if (stats.total > 0) {
+              score = (stats.correct / stats.total) * 100;
+            }
+          } catch (e) {}
+        }
+        return { question: q, score };
+      });
+
+      // Sort by score ascending (weaknesses first), then shuffle within same scores
+      topicScores.sort((a, b) => {
+        if (a.score === b.score) return Math.random() - 0.5;
+        return a.score - b.score;
+      });
+
+      selectedQuestions = topicScores.slice(0, limit).map(ts => ts.question);
+      // Shuffle the final selection so it's not strictly ordered by weakness during gameplay
+      selectedQuestions = shuffle(selectedQuestions);
+    }
+    else {
+      // Default fallback
+      selectedQuestions = topicQuestions.slice(0, limit);
+    }
+
+    return selectedQuestions;
+  }, [topicQuestions, questionLimit, distributionMode, subjects]);
+
   const totalQuestions = activeQuestions.length;
 
   // Room specific state
-  const [lives, setLives] = useState(isArenaElite ? 1 : 999);
+  const [lives, setLives] = useState(isArenaElite ? 3 : mode === 'critica' ? 5 : isLaboratorio ? 5 : 999);
   const [timeLeft, setTimeLeft] = useState(isArenaElite ? 45 : 0);
+  const [sessionTimeLeft, setSessionTimeLeft] = useState(sessionTimeLimit);
   
   const [showHint, setShowHint] = useState(false);
   const [showTopicTransition, setShowTopicTransition] = useState(false);
@@ -447,6 +590,22 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 
 
     addXP(results.totalXp);
 
+    // Update Coliseum Records
+    const currentRecords = JSON.parse(localStorage.getItem('coliseum_records') || '{}');
+    const modeKey = mode || 'default';
+    const existingRecord = currentRecords[modeKey] || { bestAccuracy: 0, bestXp: 0, totalBattles: 0 };
+    
+    const accuracy = Math.round((results.accuracy.correct / results.accuracy.total) * 100);
+    
+    currentRecords[modeKey] = {
+      bestAccuracy: Math.max(existingRecord.bestAccuracy, accuracy),
+      bestXp: Math.max(existingRecord.bestXp, results.totalXp),
+      totalBattles: (existingRecord.totalBattles || 0) + 1,
+      lastPlayed: new Date().toISOString()
+    };
+    
+    localStorage.setItem('coliseum_records', JSON.stringify(currentRecords));
+
     onBack();
   };
 
@@ -460,10 +619,21 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 
         if (isArenaElite) {
           setTimeLeft(prev => prev - 1);
         }
+
+        if (sessionTimeLimit > 0) {
+          setSessionTimeLeft(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              processSessionEnd(sessionResults);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [showFeedback, showResults, isArenaElite, showInitialScreen, showTopicTransition]);
+  }, [showFeedback, showResults, isArenaElite, showInitialScreen, showTopicTransition, sessionTimeLimit, sessionResults]);
 
   useEffect(() => {
     if (isArenaElite && timeLeft <= 0 && !showFeedback && !showResults && !isProcessingEnd && !showInitialScreen && !showTopicTransition) {
@@ -650,8 +820,14 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 
       xpPerQuestion = 12;
     }
 
+    let multiplier = 1;
+    if (mode === 'critica') multiplier = 2; // Operação Resgate (2x XP)
+    
+    const baseTotalXp = correctCount * xpPerCorrect + (total * xpPerQuestion);
+    const totalXp = Math.round(baseTotalXp * multiplier);
+
     return {
-      totalXp: correctCount * xpPerCorrect + (total * xpPerQuestion),
+      totalXp: totalXp,
       accuracy: {
         correct: correctCount,
         total: total
@@ -686,7 +862,7 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 
   }
 
   if (showResults) {
-    return <BattleResultsView results={calculateResults()} onFinish={handleFinalizeSession} sessionSummary={sessionSummary} />;
+    return <BattleResultsView results={calculateResults()} onFinish={handleFinalizeSession} sessionSummary={sessionSummary} mode={mode} />;
   }
 
   if (showFeedback) {
@@ -762,6 +938,14 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 
               <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 mt-1">
                 Questão {currentQuestionIndex + 1} de {totalQuestions}
               </span>
+              {sessionTimeLimit > 0 && (
+                <div className="flex items-center gap-1 mt-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                  <span className="material-icons-round text-[10px] text-slate-500">timer</span>
+                  <span className={`text-[10px] font-black ${sessionTimeLeft < 30 ? 'text-red-500 animate-pulse' : 'text-slate-600 dark:text-slate-300'}`}>
+                    {formatTime(sessionTimeLeft)}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2 mt-1">
               <button 
@@ -771,11 +955,16 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({ onBack, mode = 
                 <span className="material-icons-round text-xl">{isMuted ? 'volume_off' : 'volume_up'}</span>
               </button>
               
-              {isArenaElite && (
+              {(isArenaElite || isLaboratorio) && (
                 <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded-lg border border-red-100 dark:border-red-900/30">
-                  <span className={`material-icons-round text-sm ${lives > 0 ? 'text-red-500' : 'text-red-200 dark:text-red-900/50'}`}>
-                    favorite
-                  </span>
+                  {[...Array(isArenaElite ? 3 : 5)].map((_, i) => (
+                    <span 
+                      key={i}
+                      className={`material-icons-round text-sm ${i < lives ? 'text-red-500' : 'text-red-200 dark:text-red-900/50'}`}
+                    >
+                      favorite
+                    </span>
+                  ))}
                 </div>
               )}
 

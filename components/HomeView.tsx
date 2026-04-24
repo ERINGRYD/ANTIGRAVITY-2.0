@@ -1,5 +1,5 @@
 import React from 'react';
-import { Subject, Goal, UserStats, StudySession } from '../types';
+import { Subject, Goal, UserStats, StudySession, Tab } from '../types';
 import VitalStatusCard from './VitalStatusCard';
 
 interface HomeViewProps {
@@ -8,14 +8,23 @@ interface HomeViewProps {
   userStats: UserStats;
   studyHistory: StudySession[];
   onStartStudy: (id: string) => void;
-  onNavigateToTab: (tab: any) => void;
+  onNavigateToTab: (tab: Tab) => void;
+  onNavigateToManagement: () => void;
 }
 
-const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHistory, onStartStudy, onNavigateToTab }) => {
+const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHistory, onStartStudy, onNavigateToTab, onNavigateToManagement }) => {
   const nextSubject = subjects[0];
   const completedGoals = goals.filter(g => g.isCompleted).length;
   const progress = goals.length > 0 ? Math.round((completedGoals / goals.length) * 100) : 0;
   const totalStudyTime = subjects.reduce((sum, subject) => sum + subject.studiedMinutes, 0);
+
+  const hasStudiedToday = studyHistory.some(session => {
+    const sessionDate = new Date(session.date);
+    const today = new Date();
+    return sessionDate.getDate() === today.getDate() &&
+           sessionDate.getMonth() === today.getMonth() &&
+           sessionDate.getFullYear() === today.getFullYear();
+  });
 
   return (
     <main className="px-6 py-8 flex flex-col gap-8 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto w-full">
@@ -41,40 +50,83 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
         </div>
       </section>
 
-      {nextSubject && (
-        <section className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-colors duration-300">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Próxima Matéria</h3>
-            <span 
-              className="text-[10px] font-black px-2 py-1 rounded-lg"
-              style={{ color: nextSubject.color, backgroundColor: `${nextSubject.color}1A` }}
-            >
-              Ciclo Ativo
-            </span>
+      {subjects.length === 0 ? (
+        <section className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border-2 border-dashed border-indigo-200 dark:border-indigo-500/30 text-center flex flex-col items-center justify-center gap-4 transition-colors duration-300">
+          <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-full flex items-center justify-center mb-2">
+            <span className="material-icons-round text-3xl">library_add</span>
           </div>
-          <div className="flex items-center gap-4">
-            <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg"
-              style={{ backgroundColor: nextSubject.color }}
-            >
-              <span className="material-icons-round text-3xl">{nextSubject.icon}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-lg font-black text-slate-900 dark:text-white truncate">{nextSubject.name}</h4>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Último estudo: {userStats.lastStudyDate ? new Date(userStats.lastStudyDate).toLocaleDateString() : 'Ainda não iniciado'}</p>
-            </div>
-            <button 
-              onClick={() => onStartStudy(nextSubject.id)}
-              className="w-12 h-12 text-white rounded-full flex items-center justify-center active:scale-95 transition-all"
-              style={{ 
-                backgroundColor: nextSubject.color,
-                boxShadow: `0 8px 16px ${nextSubject.color}4D`
-              }}
-            >
-              <span className="material-icons-round text-2xl">play_arrow</span>
-            </button>
+          <div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">Nenhuma matéria ainda</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-[250px] mx-auto">
+              Comece criando sua primeira matéria para iniciar seus estudos.
+            </p>
           </div>
+          <button 
+            onClick={onNavigateToManagement}
+            className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/30 active:scale-95 transition-all flex items-center gap-2"
+          >
+            <span className="material-icons-round text-lg">add</span>
+            Criar Matéria
+          </button>
         </section>
+      ) : (
+        <>
+          {!hasStudiedToday && (
+            <section className="bg-amber-50 dark:bg-amber-500/10 rounded-[32px] p-6 border border-amber-100 dark:border-amber-500/20 flex flex-col sm:flex-row items-center gap-4 transition-colors duration-300">
+              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center shrink-0">
+                <span className="material-icons-round text-2xl">timer</span>
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="text-sm font-black text-amber-900 dark:text-amber-300 mb-1">Você ainda não estudou hoje!</h3>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400/80">
+                  Mantenha sua ofensiva ativa. Inicie o timer agora mesmo.
+                </p>
+              </div>
+              <button 
+                onClick={() => onNavigateToTab(Tab.CICLO)}
+                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-500/30 active:scale-95 transition-all shrink-0"
+              >
+                Iniciar Timer
+              </button>
+            </section>
+          )}
+
+          {nextSubject && (
+            <section className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-colors duration-300">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Próxima Matéria</h3>
+                <span 
+                  className="text-[10px] font-black px-2 py-1 rounded-lg"
+                  style={{ color: nextSubject.color, backgroundColor: `${nextSubject.color}1A` }}
+                >
+                  Ciclo Ativo
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div 
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                  style={{ backgroundColor: nextSubject.color }}
+                >
+                  <span className="material-icons-round text-3xl">{nextSubject.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-lg font-black text-slate-900 dark:text-white truncate">{nextSubject.name}</h4>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Último estudo: {userStats.lastStudyDate ? new Date(userStats.lastStudyDate).toLocaleDateString() : 'Ainda não iniciado'}</p>
+                </div>
+                <button 
+                  onClick={() => onStartStudy(nextSubject.id)}
+                  className="w-12 h-12 text-white rounded-full flex items-center justify-center active:scale-95 transition-all"
+                  style={{ 
+                    backgroundColor: nextSubject.color,
+                    boxShadow: `0 8px 16px ${nextSubject.color}4D`
+                  }}
+                >
+                  <span className="material-icons-round text-2xl">play_arrow</span>
+                </button>
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       <div className="grid grid-cols-2 gap-4">
@@ -156,7 +208,7 @@ const HomeView: React.FC<HomeViewProps> = ({ subjects, goals, userStats, studyHi
           <div className="text-center py-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma meta definida para esta semana.</p>
             <button 
-              onClick={() => onNavigateToTab('mais')} 
+              onClick={() => onNavigateToTab(Tab.MAIS)} 
               className="mt-2 text-sm font-bold text-blue-500 hover:text-blue-600"
             >
               Definir Metas

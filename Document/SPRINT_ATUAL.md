@@ -1,16 +1,16 @@
 # Sprint Atual
 
-> **Sprint:** 7 — Timer Integration & Data Unification  
-> **Started:** 2026-03-17  
-> **Target end:** 2026-03-31  
-> **Focus:** Resolve the dual data model technical debt and integrate the new timer hooks.  
-> **Last updated:** 2026-03-22
+> **Sprint:** 8 — PWA & Navigation Refinement  
+> **Started:** 2026-04-01  
+> **Target end:** 2026-04-15  
+> **Focus:** Transform the app into a full PWA and refine the global navigation experience.  
+> **Last updated:** 2026-04-06
 
 ---
 
 ## Sprint Goal
 
-Unify the legacy `Subject/Topic` data model with the new `Theme/SubjectCycleState` model to establish a single source of truth. Successfully integrate the orphaned timer hooks (`useStudyTimer`, `useAutoCycleTransition`) into the `FocusModeView` so users have accurate dual-counter tracking (cycle time vs. excess accumulated time). Additionally, implement a manual data export feature to secure user data against `localStorage` wipes.
+Transform the application into a fully functional Progressive Web App (PWA) with offline support, home screen installation, and push notification readiness. Additionally, refine the global navigation flow by implementing a universal back button and ensuring tab transitions reset internal sub-states for a cleaner user experience.
 
 ---
 
@@ -18,8 +18,11 @@ Unify the legacy `Subject/Topic` data model with the new `Theme/SubjectCycleStat
 
 | ID | Task | Status | Assignee | Blocked by |
 |----|------|--------|----------|------------|
-| T-001 | Unify Data Models (Subject -> Theme) | 🔄 In Progress | — | — |
-| T-002 | Integrate useStudyTimer into FocusModeView | ❌ Blocked | — | T-001 |
+| T-006 | Implement PWA Core (Manifest & SW) | ✅ Done | — | — |
+| T-007 | Create PWA Install Prompt | ✅ Done | — | — |
+| T-008 | Refine Global Navigation & Back Button | ✅ Done | — | — |
+| T-001 | Unify Data Models (Subject -> Theme) | ✅ Done | — | — |
+| T-002 | Integrate useStudyTimer into FocusModeView | 📋 Ready | — | — |
 | T-003 | Implement Data Export/Backup | 📋 Ready | — | — |
 | T-004 | Wire up Achievement Triggers | 📋 Ready | — | — |
 | T-005 | Fix Orphaned Archived Enemies | 📋 Ready | — | — |
@@ -36,37 +39,36 @@ Status legend:
 
 ## 🔄 In Progress
 
-### T-001 — Unify Data Models (Subject -> Theme)
-
-**Goal:** Migrate the application's core state from the legacy `Subject/Topic` interfaces to the new `Theme/SubjectCycleState` interfaces without data loss.  
-**Started:** 2026-03-17  
-**Files being modified:**
-- `src/contexts/AppContext.tsx` — Updating state initialization and persistence logic.
-- `src/types.ts` — Deprecating legacy types and exporting new unified types.
-- `src/utils/migration.ts` — Creating the migration script for existing `localStorage` data.
-
-**Current state:**
-The new interfaces (`Theme`, `SubjectCycleState`) exist in the codebase, but `AppContext` still reads/writes using the legacy `Subject` array. A bridge/adapter is needed to migrate existing users on boot.
-
-**Remaining steps:**
-- [ ] Write a migration utility that reads `localStorage.getItem('subjects')` and maps it to `themes` and `cycle_states`.
-- [ ] Update `AppContext` to provide `themes` and `cycleStates` instead of `subjects`.
-- [ ] Refactor `CycleView` and `ManagementView` to read from the new state structures.
-
-**Acceptance criteria:**
-- [ ] On app load, if `subjects` exists in `localStorage` and `themes` does not, the app generates `themes` where `Theme.accumulatedTime` exactly equals the legacy `Topic.studiedMinutes`.
-- [ ] `CycleView` renders the exact same progress bars and subject order using `SubjectCycleState` as it did with the legacy model.
-- [ ] Adding a new topic in `ManagementView` successfully writes a new `Theme` object to the `themes` array in `localStorage`.
-
-**Definition of done:**
-The app runs entirely on `Theme` and `SubjectCycleState` models, `localStorage` persists these new keys, and no TypeScript errors remain regarding missing `Subject` properties.
-
-**Known risks:**
-- High risk of breaking the UI in multiple places (`CycleView`, `ManagementView`, `StatsView`) since `Subject` is deeply embedded in the component tree.
+(None currently)
 
 ---
 
 ## 📋 Ready to Start
+
+### T-002 — Integrate useStudyTimer into FocusModeView
+
+**Priority:** 1 (start next)  
+**Estimated size:** Medium (1-2 sessions)  
+**Goal:** Connect the new `useStudyTimer` hook to `FocusModeView` to correctly track cycle time and excess time.
+
+**Context:**
+The app continues to use the legacy timer, meaning cycle time and excess time are not tracked separately, and auto-transitions cannot be implemented.
+
+**Depends on:** 
+- T-001 (Completed)
+
+**Unblocks:**
+- `useAutoCycleTransition` and `useManualCycleDecision` integrations.
+
+**Files to modify:**
+- `src/components/FocusModeView.tsx`
+
+**Acceptance criteria:**
+- [ ] `FocusModeView` uses `useStudyTimer` instead of legacy timer logic.
+- [ ] Cycle time and excess time are tracked separately.
+- [ ] Auto-transitions can be implemented.
+
+---
 
 ### T-003 — Implement Data Export/Backup
 
@@ -152,25 +154,27 @@ Currently, deleting a topic leaves its spaced repetition data in the `archived_e
 
 ## ❌ Blocked
 
-### T-002 — Integrate useStudyTimer into FocusModeView
-
-**Blocked by:** T-001 (Unify Data Models)  
-**Blocking reason:**
-`useStudyTimer` requires `SubjectCycleState` and `Theme` objects as inputs. `FocusModeView` currently only has access to legacy `Subject` and `Topic` objects. The timer cannot be connected until the data models are unified.
-
-**What needs to happen to unblock:**
-- [ ] Complete T-001 so `AppContext` provides `SubjectCycleState`.
-
-**Impact of remaining blocked:**
-The app continues to use the legacy timer, meaning cycle time and excess time are not tracked separately, and auto-transitions cannot be implemented.
-
-**Workaround available?** No.
+(None currently)
 
 ---
 
 ## ✅ Done This Sprint
 
-*(No tasks completed yet in this sprint. Previous sprint tasks archived to CHANGELOG.md).*
+### T-001 — Unify Data Models (Subject -> Theme)
+**Goal:** Migrate the application's core state from the legacy `Subject/Topic` interfaces to the new `Theme/SubjectCycleState` interfaces without data loss.
+**Outcome:** Migration script implemented, `AppContext` provides `themes` and `cycleStates`, and local state is persisted.
+
+### T-006 — Implement PWA Core (Manifest & SW)
+**Goal:** Configure `vite-plugin-pwa` to enable offline access and home screen installation.
+**Outcome:** Service worker is active, caching static assets and fonts. `manifest.json` is configured with icons and theme colors.
+
+### T-007 — Create PWA Install Prompt
+**Goal:** Intercept `beforeinstallprompt` and show a custom UI to users.
+**Outcome:** `usePWAInstall` hook and `PWAInstallPrompt` component are integrated into `App.tsx`.
+
+### T-008 — Refine Global Navigation & Back Button
+**Goal:** Improve UX by adding a back button in sub-views and resetting state on tab change.
+**Outcome:** `Header.tsx` supports `onBack`. `App.tsx` resets `activeView` and modals when `activeTab` changes.
 
 ---
 
@@ -243,7 +247,11 @@ Data models are unified, local export is working, and a clear authentication flo
 
 ## Session Log
 
-**Session 2026-03-22 (Current):**
+**Session 2026-04-11 (Current):**
+  - **Completed:** T-001 (Unify Data Models) — Implemented migration script, updated `AppContext`, and resolved lint errors.
+  - **Next steps:** T-002 (Integrate useStudyTimer into FocusModeView).
+
+**Session 2026-03-22:**
   - **In Progress:** B-004 (Enemies not appearing in CombatView) — Added extensive logging to `CombatView.tsx` and `AppContext.tsx` to trace data initialization and filter synchronization. Fixed an issue where the `subject` filter was not correctly initialized when `subjectId` was passed.
   - **Next steps:** Analyze the new logs to pinpoint why enemies are not being generated or displayed.
 

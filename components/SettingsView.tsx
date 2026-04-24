@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { requestNotificationPermission, subscribeUserToPush } from '../utils/pushNotifications';
+import { exportUserData } from '../utils/exportData';
 
 interface SettingsViewProps {
   onBack: () => void;
@@ -177,16 +178,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-gray-900 dark:text-white">Limpar Banco de Questões</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Remove todas as questões cadastradas e restaura o estado inicial.</p>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">Exportar Meus Dados (Backup)</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Baixe um arquivo JSON com todo o seu progresso e configurações.</p>
               </div>
               
               <button 
-                onClick={handleResetQuestions}
-                className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-bold text-sm hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
+                onClick={() => exportUserData()}
+                className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all flex items-center gap-2"
               >
-                Limpar
+                <span className="material-symbols-outlined text-sm">download</span>
+                Exportar
               </button>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">Limpar Banco de Questões</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Remove todas as questões cadastradas e restaura o estado inicial.</p>
+                </div>
+                
+                <button 
+                  onClick={handleResetQuestions}
+                  className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-bold text-sm hover:bg-red-100 dark:hover:bg-red-900/40 transition-all"
+                >
+                  Limpar
+                </button>
+              </div>
             </div>
           </div>
         </div>

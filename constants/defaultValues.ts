@@ -26,7 +26,7 @@ export const DEFAULT_USER_STATS: UserStats = {
   stamina: 100
 };
 
-export const DEFAULT_SUBJECTS: Subject[] = [];
+export const DEFAULT_SUBJECTS: Subject[] = INITIAL_SUBJECTS;
 
 export const DEFAULT_GOALS: Goal[] = [];
 

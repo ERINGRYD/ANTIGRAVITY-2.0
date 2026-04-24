@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GoogleGenAI, Type } from '@google/genai';
+// import { GoogleGenAI, Type } from '@google/genai';
 import { WizardState, ConcursoInfo } from '../../../types/wizard.types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -24,113 +24,52 @@ const ConcursoSearchStep: React.FC<ConcursoSearchStepProps> = ({ state, updateSt
     setResults([]);
     setSelectedConcurso(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      // API call disabled temporarily per user request
+      /*
+      // const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY_DISABLED });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Encontre informações sobre o concurso ou edital: "${query}". 
-        Retorne uma lista de concursos encontrados com nome, banca examinadora e data da prova (se disponível, no formato YYYY-MM-DD).
-        Para cada concurso, identifique os diferentes cargos (positions) disponíveis.
-        Para cada cargo, liste as matérias específicas.
-        Para cada matéria, liste os tópicos e sub-tópicos em uma estrutura recursiva (até 6 níveis de profundidade).`,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING, description: 'Nome do concurso' },
-                banca: { type: Type.STRING, description: 'Banca examinadora (ex: FGV, FCC, Cebraspe)' },
-                date: { type: Type.STRING, description: 'Data da prova (YYYY-MM-DD)' },
-                positions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      name: { type: Type.STRING, description: 'Nome do cargo' },
-                      subjects: {
-                        type: Type.ARRAY,
-                        items: {
-                          type: Type.OBJECT,
-                          properties: {
-                            name: { type: Type.STRING, description: 'Nome da matéria' },
-                            topics: {
-                              type: Type.ARRAY,
-                              items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                  name: { type: Type.STRING, description: 'Nome do tópico' },
-                                  subtopics: {
-                                    type: Type.ARRAY,
-                                    items: {
-                                      type: Type.OBJECT,
-                                      properties: {
-                                        name: { type: Type.STRING, description: 'Nome do sub-tópico' },
-                                        subtopics: {
-                                          type: Type.ARRAY,
-                                          items: {
-                                            type: Type.OBJECT,
-                                            properties: {
-                                              name: { type: Type.STRING, description: 'Nome do sub-sub-tópico' },
-                                              subtopics: {
-                                                type: Type.ARRAY,
-                                                items: {
-                                                  type: Type.OBJECT,
-                                                  properties: {
-                                                    name: { type: Type.STRING, description: 'Nível 4' },
-                                                    subtopics: {
-                                                      type: Type.ARRAY,
-                                                      items: {
-                                                        type: Type.OBJECT,
-                                                        properties: {
-                                                          name: { type: Type.STRING, description: 'Nível 5' },
-                                                          subtopics: {
-                                                            type: Type.ARRAY,
-                                                            items: {
-                                                              type: Type.OBJECT,
-                                                              properties: {
-                                                                name: { type: Type.STRING, description: 'Nível 6' }
-                                                              },
-                                                              required: ['name']
-                                                            }
-                                                          }
-                                                        },
-                                                        required: ['name']
-                                                      }
-                                                    }
-                                                  },
-                                                  required: ['name']
-                                                }
-                                              }
-                                            },
-                                            required: ['name']
-                                          }
-                                        }
-                                      },
-                                      required: ['name']
-                                    }
-                                  }
-                                },
-                                required: ['name']
-                              }
-                            }
-                          },
-                          required: ['name', 'topics']
-                        }
-                      }
-                    },
-                    required: ['name', 'subjects']
-                  }
-                }
-              },
-              required: ['name', 'positions']
-            }
-          }
-        }
+        ...
       });
-
       const data = JSON.parse(response.text || '[]');
+      */
+      
+      // Mocked data for demonstration
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const data: ConcursoInfo[] = [
+        {
+          name: "Concurso Simulado - Banco do Brasil",
+          banca: "Cesgranrio",
+          date: "2025-10-15",
+          positions: [
+            {
+              name: "Escriturário - Agente de Tecnologia",
+              subjects: [
+                {
+                  name: "Língua Portuguesa",
+                  topics: [
+                    {
+                      name: "Compreensão de textos",
+                      subtopics: [
+                        { name: "Tipologia textual" }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  name: "Conhecimentos Bancários",
+                  topics: [
+                    {
+                      name: "Sistema Financeiro Nacional",
+                      subtopics: []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ];
+      
       setResults(data);
     } catch (err) {
       console.error('Search error:', err);

@@ -6,6 +6,8 @@ interface ManagementViewProps {
   subjects: Subject[];
   onBack: () => void;
   onUpdate: (updatedSubjects: Subject[]) => void;
+  onDeleteSubject?: (id: string) => void;
+  onDeleteTopic?: (id: string) => void;
 }
 
 const COLORS = [
@@ -27,7 +29,7 @@ const ICONS = [
   'menu_book', 'functions', 'history_edu', 'public', 'bolt', 'science', 'language', 'palette', 'fitness_center', 'psychology', 'biotech', 'calculate', 'translate', 'draw'
 ];
 
-const ManagementView: React.FC<ManagementViewProps> = ({ subjects, onBack, onUpdate }) => {
+const ManagementView: React.FC<ManagementViewProps> = ({ subjects, onBack, onUpdate, onDeleteSubject, onDeleteTopic }) => {
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [localSubjects, setLocalSubjects] = useState<Subject[]>(subjects);
   const [isPickingAppearance, setIsPickingAppearance] = useState(false);
@@ -55,6 +57,28 @@ const ManagementView: React.FC<ManagementViewProps> = ({ subjects, onBack, onUpd
   const editingSubject = localSubjects.find(s => s.id === editingSubjectId);
 
   const handleSave = () => {
+    // Find deleted subjects
+    const localSubjectIds = new Set(localSubjects.map(s => s.id));
+    const deletedSubjects = subjects.filter(s => !localSubjectIds.has(s.id));
+    
+    if (onDeleteSubject) {
+      deletedSubjects.forEach(s => onDeleteSubject(s.id));
+    }
+
+    // Find deleted topics within remaining subjects
+    if (onDeleteTopic) {
+      subjects.forEach(originalSubject => {
+        if (localSubjectIds.has(originalSubject.id)) {
+          const localSubject = localSubjects.find(s => s.id === originalSubject.id);
+          if (localSubject && originalSubject.topics) {
+            const localTopicIds = new Set(localSubject.topics?.map(t => t.id) || []);
+            const deletedTopics = originalSubject.topics.filter(t => !localTopicIds.has(t.id));
+            deletedTopics.forEach(t => onDeleteTopic(t.id));
+          }
+        }
+      });
+    }
+
     onUpdate(localSubjects);
     onBack();
   };

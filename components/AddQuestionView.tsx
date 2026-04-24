@@ -187,11 +187,12 @@ const AddQuestionView: React.FC<AddQuestionViewProps> = ({
 
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 px-4 py-4 shrink-0">
           <div className="max-w-md mx-auto md:max-w-none flex items-center justify-between">
-            <button onClick={onBack} className="w-12 h-12 flex items-center justify-center -ml-3 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95">
-              <span className="material-symbols-outlined text-slate-600 dark:text-slate-400">close</span>
+            <button onClick={onBack} className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:scale-95 text-slate-600 dark:text-slate-400">
+              <span className="material-symbols-outlined">arrow_back</span>
+              <span className="text-sm font-bold">Voltar</span>
             </button>
             <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Nova Questão</h1>
-            <div className="w-10"></div>
+            <div className="w-16"></div>
           </div>
         </header>
 

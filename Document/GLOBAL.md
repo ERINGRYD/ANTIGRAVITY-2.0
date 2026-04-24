@@ -1,15 +1,15 @@
 # Global Roadmap
 
 > **Product:** Ciclo de Estudos (Tempos Labs)  
-> **Current Phase:** Phase 2 — Timer Refactor & Gamification Polish  
-> **Overall completion:** ~75% (estimated)  
-> **Last updated:** 2026-03-22
+> **Current Phase:** Phase 5 — Advanced Features & Polish  
+> **Overall completion:** ~85% (estimated)  
+> **Last updated:** 2026-04-06
 
 ---
 
 ## Product Vision
 
-Ciclo de Estudos is a gamified study management application designed to help students optimize their learning through structured study cycles, spaced repetition, and RPG-like engagement mechanics. It transforms the grueling process of exam preparation into an engaging journey where users earn XP, battle topics, and track their mastery over time.
+Ciclo de Estudos is a gamified study management application designed to help students optimize their learning through structured study cycles, spaced repetition, and RPG-like engagement mechanics. It transforms the grueling process of exam preparation into an engaging journey where users earn XP, battle topics, and track their mastery over time. Now fully accessible as a **Progressive Web App (PWA)**.
 
 ### Core Value Proposition
 Combines the discipline of cycle-based study planning with the engagement of RPG mechanics and the efficiency of spaced repetition algorithms.
@@ -31,6 +31,8 @@ Students preparing for high-stakes exams (like "concursos públicos" or universi
 | Statistics & History | ✅ Complete | 4 | Time and battle stats visible |
 | Gamification | ⚠️ Partial | 2 | XP/HP works, achievements need deeper integration |
 | Data Import/Export | ⚠️ Partial | 5 | JSON import exists, export missing/stubbed |
+| PWA Implementation | ✅ Complete | 5 | Offline access, manifest, and install prompt |
+| Navigation & UX | ✅ Complete | 5 | Global back button and tab reset logic |
 
 Status legend:
 ✅ Complete — fully working and integrated
@@ -173,9 +175,25 @@ Status legend:
 
 ### Phase 5 — Advanced Features & Polish
 **Goal:** Enhance usability, data portability, and long-term retention.  
-**Status:** 📋 Not Started / 🔄 In Progress
+**Status:** 🔄 In Progress
 
 #### Features in this phase:
+
+**PWA Implementation**
+- Status: ✅ Complete
+- Files: `vite.config.ts`, `public/manifest.json`, `src/hooks/usePWAInstall.ts`, `src/components/PWAInstallPrompt.tsx`
+- Description: Transform the app into a Progressive Web App.
+- What works: Service worker caching, manifest, custom install prompt, offline mode.
+- What is missing: Backend push notification service (VAPID).
+- Blocks: None.
+
+**Navigation & UX Refinement**
+- Status: ✅ Complete
+- Files: `src/App.tsx`, `src/components/Header.tsx`
+- Description: Improve navigation flow and sub-view management.
+- What works: Global back button, tab-based state reset, contextual headers.
+- What is missing: Nothing.
+- Blocks: None.
 
 **Data Import/Export**
 - Status: ⚠️ Partial
@@ -193,7 +211,7 @@ Status legend:
 - What is missing: Everything. Currently relies entirely on `localStorage`.
 - Blocks: None.
 
-#### Phase completion: 0/2 features complete
+#### Phase completion: 2/4 features complete
 
 ---
 

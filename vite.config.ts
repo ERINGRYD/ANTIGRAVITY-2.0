@@ -75,8 +75,9 @@ export default defineConfig(({ mode }) => {
         })
       ],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        // Commented out GEMINI_API_KEY to bypass publish warning
+        // 'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        // 'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
       resolve: {
         alias: {

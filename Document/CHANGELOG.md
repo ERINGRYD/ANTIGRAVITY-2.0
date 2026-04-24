@@ -21,6 +21,37 @@ Each entry uses these change type labels:
 
 ---
 
+## [1.1.0] — 2026-04-11
+
+> **Session summary:** Implemented full PWA support, refined global navigation, and completed the data model migration from legacy `Subject` to `Theme` + `SubjectCycleState`.  
+> **Codebase state after this session:** The app is now installable, works offline, has a more robust navigation flow, and runs on the new granular data architecture.
+
+### ✅ ADDED
+- **PWA Support:** Integrated `vite-plugin-pwa` with custom manifest and service worker.
+  - Files: `vite.config.ts`, `vite-env.d.ts`, `PWA_DEPLOYMENT.md`.
+- **PWA Install Prompt:** Custom hook and component to handle app installation.
+  - Files: `src/hooks/usePWAInstall.ts`, `src/components/PWAInstallPrompt.tsx`.
+- **Push Notifications Utility:** Base logic for requesting permissions and subscribing to push.
+  - File: `src/utils/pushNotifications.ts`.
+- **Data Migration:** Script to migrate legacy `Subject` data to `Theme` and `SubjectCycleState`.
+  - File: `src/utils/migration.ts`.
+
+### 🔄 CHANGED
+- **Global Navigation:** Refactored `App.tsx` to reset sub-views when switching main tabs.
+- **Header Back Button:** Added `onBack` support to `Header.tsx` and integrated it into the main navigation flow.
+- **Settings UI:** Added a toggle for Push Notifications.
+- **App Metadata:** Updated `index.html` title and theme colors.
+- **Data Architecture:** `AppContext` now uses `themes` and `cycleStates` instead of `subjects`. `CycleView` and `SubjectCard` updated to consume the new models.
+
+### 🐛 FIXED
+- **Workbox Cache Limit:** Increased `maximumFileSizeToCacheInBytes` to 5MB to allow caching of the main JS bundle.
+- **TypeScript Types:** Added `vite-env.d.ts` to resolve `virtual:pwa-register` type errors.
+- **Missing Imports:** Restored missing imports in `useFirebaseSync.ts`.
+- **Syntax Errors:** Fixed syntax errors in `CycleView.tsx`.
+- **Lint Errors:** Implemented `updateSubjectTopics` locally in `App.tsx` to fix lint errors during migration.
+
+---
+
 ## [Unreleased] — In Progress
 
 Changes that are built but not yet fully integrated or complete.

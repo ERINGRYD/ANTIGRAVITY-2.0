@@ -5,6 +5,8 @@ export interface StudySession {
   subjectColor: string;
   themeId: string | null;
   themeName: string | null;
+  topicId: string | null;
+  topicName?: string;
   startedAt: string;          // ISO
   endedAt: string;            // ISO
   durationMinutes: number;    // total session duration

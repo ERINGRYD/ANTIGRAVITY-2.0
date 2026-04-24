@@ -2,6 +2,8 @@
 export const STORAGE_KEYS = {
   // 📚 Dados Estruturais (Core Data)
   SUBJECTS: 'studyapp-subjects',
+  THEMES: 'studyapp-themes',
+  CYCLE_STATES: 'studyapp-cycle-states',
   GOALS: 'studyapp-goals',
   QUESTIONS: 'studyapp-questions',
   

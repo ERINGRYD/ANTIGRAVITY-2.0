@@ -14,6 +14,9 @@ O projeto foi configurado utilizando o `vite-plugin-pwa`, que gera automaticamen
   - Cache automático de assets estáticos (JS, CSS, HTML, imagens) gerados no build.
   - Suporte offline completo para a interface do usuário.
 - **Instalação Nativa**: Hook customizado (`usePWAInstall`) e componente (`PWAInstallPrompt`) que interceptam o evento `beforeinstallprompt` para exibir um prompt de instalação personalizado.
+- **Navegação Nativa & UX**:
+  - Implementação de um **botão de voltar** (`arrow_back`) no Header para sub-views, simulando a navegação de apps nativos.
+  - Lógica de **reset de estado** ao trocar de abas no BottomNav, garantindo que cada seção do app comece em um estado limpo.
 - **Notificações Push**: Utilitário (`pushNotifications.ts`) e interface nas Configurações para solicitar permissão de notificações push e preparar a inscrição do usuário via VAPID keys.
 
 ## 2. Requisitos de Deployment

@@ -28,26 +28,14 @@ interface FocusModeViewProps {
   setPomodoroSettings: (settings: PomodoroSettings) => void;
   onBack: () => void;
   onAddXP: (amount: number) => void;
-  onRecordSession: (session: {
-    subjectId: string;
-    subjectName: string;
-    topicName: string;
-    minutesStudied: number;
-    questionsCompleted: number;
-    accuracy: number;
-    xpEarned: number;
-    type: 'foco' | 'batalha' | 'revisao';
-    pagesRead?: number;
-    pauseMinutes?: number;
-    stopPoint?: string;
-  }) => void;
+  onRecordSession: (session: Omit<StudySession, 'id' | 'date'>) => void;
   studyHistory?: StudySession[];
 }
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak' | 'manualPause';
 
 const FocusModeView: React.FC<FocusModeViewProps> = ({ 
-  subjects, 
+  subjects: propSubjects, 
   initialSubjectId, 
   initialTopicId,
   isAutoCycle, 
@@ -58,7 +46,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
   onRecordSession,
   studyHistory = []
 }) => {
-  const { isDarkMode, setSubjects } = useApp();
+  const { isDarkMode, subjects, themes, cycleStates, setSubjects, setThemes, setCycleStates } = useApp();
   const [isActive, setIsActive] = useState(true);
   const [timerMode, setTimerMode] = useState<TimerMode>('focus');
   const [secondsLeft, setSecondsLeft] = useState(pomodoroSettings.focusTime * 60);
@@ -89,23 +77,29 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
     return idx === -1 ? 0 : idx;
   }, [subjects, initialSubjectId]);
 
-  const initialTopicIdx = useMemo(() => {
-    if (initialIdx !== -1 && initialTopicId) {
-      const subject = subjects[initialIdx];
-      const tIdx = subject.topics.findIndex(t => t.id === initialTopicId);
-      return tIdx !== -1 ? tIdx : 0;
-    }
-    return 0;
-  }, [subjects, initialIdx, initialTopicId]);
-
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState<number>(initialIdx);
-  const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(initialTopicIdx);
-  
   const currentSubject = subjects[currentSubjectIndex];
   const nextSubjectIndex = (currentSubjectIndex + 1) % subjects.length;
   const nextSubject = subjects[nextSubjectIndex];
-  const currentTopic = currentSubject?.topics[currentTopicIndex];
-  const currentTopicName = currentTopic?.name || 'Geral';
+
+  // Get themes for the current subject
+  const currentSubjectThemes = useMemo(() => {
+    if (!currentSubject) return [];
+    return themes.filter(t => t.subjectId === currentSubject.id).sort((a, b) => a.order - b.order);
+  }, [themes, currentSubject]);
+
+  const initialTopicIdx = useMemo(() => {
+    if (initialIdx !== -1 && initialTopicId && currentSubjectThemes.length > 0) {
+      const tIdx = currentSubjectThemes.findIndex(t => t.id === initialTopicId);
+      return tIdx !== -1 ? tIdx : 0;
+    }
+    return 0;
+  }, [initialIdx, initialTopicId, currentSubjectThemes]);
+
+  const [currentTopicIndex, setCurrentTopicIndex] = useState<number>(initialTopicIdx);
+  
+  const currentTheme = currentSubjectThemes[currentTopicIndex];
+  const currentTopicName = currentTheme?.name || 'Geral';
 
   const defaultTheme: Theme = useMemo(() => ({
     id: 'default',
@@ -135,8 +129,8 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
   }), []);
 
   // Inside the component, derive the new model from the current subject:
-  const activeTheme = currentSubject ? (subjectToThemes(currentSubject)[0] ?? defaultTheme) : defaultTheme;
-  const cycleState = currentSubject ? subjectToCycleState(currentSubject) : defaultCycleState;
+  const activeTheme = currentTheme || defaultTheme;
+  const cycleState = currentSubject ? (cycleStates.find(cs => cs.subjectId === currentSubject.id) || defaultCycleState) : defaultCycleState;
 
   const autoTransition = useAutoCycleTransition({
     isAutoCycle: isAutoCycle ?? false,
@@ -175,25 +169,15 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
     onTick: (updatedCycleState, updatedTheme) => {
       if (!currentSubject) return;
 
-      setSubjects(prev => prev.map(s => {
-        if (s.id === updatedCycleState.subjectId) {
-          return {
-            ...s,
-            studiedMinutes: updatedCycleState.currentCycleTime + updatedCycleState.excessTime,
-            topics: s.topics.map(t => {
-              if (t.id === updatedTheme.id) {
-                return {
-                  ...t,
-                  studiedMinutes: updatedTheme.accumulatedTime,
-                  isCompleted: updatedTheme.isCompleted
-                };
-              }
-              return t;
-            })
-          };
-        }
-        return s;
-      }));
+      // Update Cycle State
+      setCycleStates(prev => prev.map(cs => 
+        cs.subjectId === updatedCycleState.subjectId ? updatedCycleState : cs
+      ));
+
+      // Update Theme
+      setThemes(prev => prev.map(t => 
+        t.id === updatedTheme.id ? updatedTheme : t
+      ));
     },
   });
 
@@ -203,7 +187,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
     } else {
       studyTimer.pause();
     }
-  }, [currentSubject, isActive, timerMode, studyTimer.start, studyTimer.pause]);
+  }, [currentSubject, isActive, timerMode]);
 
   const lastStopPoint = useMemo(() => {
     if (!currentSubject || !studyHistory) return null;
@@ -301,19 +285,21 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
       // Calculate XP roughly based on time if not using pomodoros
       const xpEarned = minutesStudied * (strictMode ? 3 : 2);
 
-      onRecordSession({
-        subjectId: currentSubject.id,
-        subjectName: currentSubject.name,
-        topicName: currentTopicName,
-        minutesStudied: minutesStudied,
-        questionsCompleted: data.exercises,
-        accuracy: 100,
-        xpEarned: xpEarned,
-        type: 'foco',
-        pagesRead: data.pages,
-        pauseMinutes: pauseMinutes,
-        stopPoint: data.stopPoint
-      });
+        onRecordSession({
+          subjectId: currentSubject.id,
+          subjectName: currentSubject.name,
+          themeId: null,
+          topicId: currentTheme?.id || null,
+          topicName: currentTopicName || undefined,
+          minutesStudied: minutesStudied,
+          questionsCompleted: data.exercises,
+          accuracy: 100,
+          xpEarned: xpEarned,
+          type: 'foco',
+          pagesRead: data.pages,
+          pauseMinutes: pauseMinutes,
+          stopPoint: data.stopPoint
+        });
     }
 
     setShowMissionReport(false);
@@ -427,7 +413,9 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
         onRecordSession({
           subjectId: currentSubject.id,
           subjectName: currentSubject.name,
-          topicName: currentTopicName,
+          themeId: null,
+          topicId: currentTheme?.id || null,
+          topicName: currentTopicName || undefined,
           minutesStudied: pomodoroSettings.focusTime,
           questionsCompleted: 0,
           accuracy: 0,
@@ -482,7 +470,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
             : 'Pronto para voltar ao foco?'
         );
         
-        if (currentSubject && currentTopicIndex < currentSubject.topics.length - 1) {
+        if (currentSubject && currentTopicIndex < currentSubjectThemes.length - 1) {
           setCurrentTopicIndex(prev => prev + 1);
         } else {
           const nextIdx = (currentSubjectIndex + 1) % subjects.length;
@@ -541,36 +529,48 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
       setManualPauseStartTime(0);
       setTimerMode('manualPause');
       setIsActive(true);
+      studyTimer.pause();
     } else if (timerMode === 'manualPause') {
       setTimerMode('focus');
       setSecondsLeft(savedFocusTime);
       setIsActive(true);
+      studyTimer.start();
     } else {
       setIsActive(!isActive);
+      if (!isActive && timerMode === 'focus') {
+        studyTimer.start();
+      } else if (isActive && timerMode === 'focus') {
+        studyTimer.pause();
+      }
     }
   };
 
   useEffect(() => {
-    let interval: any;
     if (isActive && !waitingForManualSelection) {
       if (timerMode === 'manualPause') {
-        interval = setInterval(() => {
+        const interval = setInterval(() => {
           setManualPauseStartTime(p => p + 1);
           setSessionPauseSeconds(s => s + 1);
         }, 1000);
-      } else if (secondsLeft > 0) {
-        interval = setInterval(() => {
+        return () => clearInterval(interval);
+      } else if (timerMode !== 'focus' && secondsLeft > 0) {
+        const interval = setInterval(() => {
           setSecondsLeft(s => Math.max(0, s - 1));
-          if (timerMode === 'focus') {
-            setSessionFocusSeconds(s => s + 1);
-          } else {
-            setSessionPauseSeconds(s => s + 1);
-          }
+          setSessionPauseSeconds(s => s + 1);
         }, 1000);
+        return () => clearInterval(interval);
       }
     }
-    return () => clearInterval(interval);
   }, [isActive, timerMode, waitingForManualSelection, secondsLeft]);
+
+  // Sync secondsLeft with studyTimer for focus mode
+  useEffect(() => {
+    if (timerMode === 'focus') {
+      const remaining = Math.max(0, (pomodoroSettings.focusTime * 60) - studyTimer.timerState.elapsedSeconds);
+      setSecondsLeft(remaining);
+      setSessionFocusSeconds(studyTimer.timerState.elapsedSeconds);
+    }
+  }, [studyTimer.timerState.elapsedSeconds, timerMode, pomodoroSettings.focusTime]);
 
   useEffect(() => {
     if (secondsLeft === 0 && isActive && timerMode !== 'manualPause') {
@@ -888,7 +888,7 @@ const FocusModeView: React.FC<FocusModeViewProps> = ({
               <div className="text-center z-10">
                 <span className={`material-icons-round ${modeConfig.brandText} text-xl block mb-[-4px]`}>{modeConfig.icon}</span>
                 <span className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter transition-all tabular-nums text-slate-900 dark:text-white">
-                  {timerMode === 'manualPause' ? formatTime(manualPauseStartTime) : formatTime(secondsLeft)}
+                  {timerMode === 'manualPause' ? formatTime(manualPauseStartTime) : formatTime(studyTimer.timerState.elapsedSeconds > 0 && timerMode === 'focus' ? secondsLeft : secondsLeft)}
                 </span>
                 <div className="flex flex-col items-center justify-center gap-1 mt-2">
                   <div className="flex items-center gap-2">

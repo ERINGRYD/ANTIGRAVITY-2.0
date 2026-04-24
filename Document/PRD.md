@@ -1,22 +1,22 @@
 # Product Requirements Document
 
 > **Product:** Ciclo de Estudos (Tempos Labs)  
-> **Version:** 1.0.0-draft  
-> **Status:** Draft  
-> **Last updated:** 2026-03-17
+> **Version:** 1.1.0  
+> **Status:** Active Development  
+> **Last updated:** 2026-04-06
 
 ---
 
 ## 1. Product Overview
 
 ### Vision Statement
-Transform the grueling process of high-stakes exam preparation into an engaging, data-driven RPG journey where students build mastery through structured cycles and strategic battles.
+Transform the grueling process of high-stakes exam preparation into an engaging, data-driven RPG journey where students build mastery through structured cycles and strategic battles. Now available as a full **Progressive Web App (PWA)** for a seamless native-like experience.
 
 ### Problem Statement
-Studying for extensive exams (like "concursos públicos") is often unstructured, leading to burnout and inefficient review. Students struggle to balance their time across multiple subjects, fail to identify their true knowledge gaps (blind spots), and lose motivation due to a lack of visible, rewarding progress.
+Studying for extensive exams (like "concursos públicos") is often unstructured, leading to burnout and inefficient review. Students struggle to balance their time across multiple subjects, fail to identify their true knowledge gaps (blind spots), and lose motivation due to a lack of visible, rewarding progress. Users need access to their study tools even without a reliable internet connection.
 
 ### Solution Summary
-A gamified study management application that enforces a balanced "Study Cycle" to ensure all subjects are covered proportionally. It integrates an active-recall "Battle System" with confidence-based scoring to power a spaced repetition engine, ensuring users review topics exactly when they are about to forget them.
+A gamified study management application that enforces a balanced "Study Cycle" to ensure all subjects are covered proportionally. It integrates an active-recall "Battle System" with confidence-based scoring to power a spaced repetition engine. The app is built as a **PWA**, ensuring offline functionality, fast load times, and the ability to be installed directly on mobile and desktop home screens.
 
 ### Target User
 **Primary user:** Dedicated students and "concurseiros" (civil service exam candidates).  
@@ -209,6 +209,51 @@ Provides visual dashboards for users to track their time investment, battle accu
 #### Out of Scope
 - Predictive analytics for actual exam scores.
 
+### FR-007 — Progressive Web App (PWA) Capabilities
+
+**Category:** Infrastructure / UX  
+**Priority:** P0 (must have)  
+**Status:** ✅ Implemented  
+
+#### Description
+Ensures the application provides a native-like experience on mobile and desktop, including offline access and home screen installation.
+
+#### Requirements
+
+**REQ-007.1** The system must be installable as a standalone app.
+- Acceptance criteria: A `manifest.json` is provided with icons (192x192, 512x512), theme colors, and a standalone display mode.
+- Acceptance criteria: A custom installation prompt is shown to users on supported browsers.
+
+**REQ-007.2** The system must function offline.
+- Acceptance criteria: A Service Worker caches all essential static assets (JS, CSS, HTML, Icons) and core API responses.
+- Acceptance criteria: The app loads and remains functional even when the device is in airplane mode.
+
+**REQ-007.3** The system must support Push Notifications.
+- Acceptance criteria: Users can opt-in to receive notifications for study reminders or achievement unlocks.
+
+#### Business Rules
+- RULE: Offline data must be synchronized with the local state immediately to prevent loss.
+- RULE: The app must check for updates in the background and prompt the user to refresh when a new version is available.
+
+---
+
+### FR-008 — Enhanced Navigation & UX
+
+**Category:** UX  
+**Priority:** P1 (should have)  
+**Status:** ✅ Implemented  
+
+#### Description
+Provides a fluid and intuitive navigation experience across all main tabs and sub-views.
+
+#### Requirements
+
+**REQ-008.1** The system must provide a global "Back" button in sub-views.
+- Acceptance criteria: When navigating away from a main tab's root view, the header displays a back arrow that returns the user to the previous state.
+
+**REQ-008.2** Main tab transitions must reset internal sub-states.
+- Acceptance criteria: Switching between main tabs (e.g., from Ciclo to Batalha) closes any open sub-views or modals to ensure a clean start in the new context.
+
 ---
 
 ## 4. Business Rules Catalog
@@ -270,7 +315,22 @@ Provides visual dashboards for users to track their time investment, battle accu
 
 ---
 
-## 5. User Flows
+## 5. Arquitetura de Dados (Migração v2.0)
+
+O aplicativo migrou de um modelo monolítico (`Subject`) para um modelo granular (`Theme` + `SubjectCycleState`).
+
+### 5.1. Novos Modelos
+- **Theme:** Representa um tópico individual com seu próprio tempo de meta, progresso e prioridade.
+- **SubjectCycleState:** Gerencia o estado do ciclo para uma matéria (tempo acumulado na rotação atual, meta da rotação, etc.).
+- **Subject (Metadata):** Mantido apenas para metadados (nome, cor, ícone).
+
+### 5.2. Estratégia de Migração
+- **Fase 1 (Atual):** Migração automática no carregamento. Dados legados são transformados e salvos em novas chaves (`themes`, `cycle_states`). A chave `subjects` é mantida para rollback.
+- **Fase 2 (Futuro):** Remoção total do suporte ao modelo legado e limpeza do `localStorage`.
+
+---
+
+## 6. User Flows
 
 ### UF-001 — Start a Study Session (Auto-cycle ON)
 1. User opens the app and navigates to the "Ciclo" tab.
@@ -309,7 +369,7 @@ Provides visual dashboards for users to track their time investment, battle accu
 
 ---
 
-## 6. Data Requirements
+## 7. Data Requirements
 
 ### Input Validation Rules
 
@@ -341,17 +401,20 @@ Provides visual dashboards for users to track their time investment, battle accu
 
 ---
 
-## 7. Non-Functional Requirements
+## 8. Non-Functional Requirements
 
 ### Performance
 - The UI must remain responsive (60fps) during timer execution and battle transitions.
-- Statistical calculations (e.g., Metacognition Index, Peak Hour) must be memoized or calculated asynchronously to prevent blocking the main thread when rendering the Analytics dashboard.
+- **Lighthouse Performance Score:** Must maintain a score >= 90 for Performance, Accessibility, Best Practices, and PWA.
+- **Load Time:** Initial load time must be under 3 seconds on a 3G connection (via service worker caching).
 
 ### Offline Capability
 - The application must be 100% functional without an internet connection. All core logic, timers, and battle systems must execute locally.
+- **Service Worker:** Must implement a robust caching strategy (CacheFirst for static assets, NetworkFirst for dynamic content if applicable).
 
 ### Data Persistence
 - All user state (subjects, history, stats, settings) must be persisted to the browser's `localStorage` immediately upon modification to prevent data loss on accidental tab closure.
+- **PWA Storage:** Service worker must ensure the app shell is available offline.
 
 ### Accessibility
 - Color coding (e.g., Red for wrong, Green for correct) must be accompanied by text labels or distinct icons to support colorblind users.
@@ -362,7 +425,7 @@ Provides visual dashboards for users to track their time investment, battle accu
 
 ---
 
-## 8. Constraints and Limitations
+## 9. Constraints and Limitations
 
 | Constraint | Reason | Impact |
 |------------|--------|--------|
@@ -372,7 +435,7 @@ Provides visual dashboards for users to track their time investment, battle accu
 
 ---
 
-## 9. Future Requirements (Planned)
+## 10. Future Requirements (Planned)
 
 **FR-FUTURE-001 — Cloud Synchronization**
 - **Trigger:** Mentioned as a limitation of the current `localStorage` setup.
@@ -383,7 +446,7 @@ Provides visual dashboards for users to track their time investment, battle accu
 **FR-FUTURE-002 — Dual-Counter Timer Integration**
 - **Trigger:** Existence of `useStudyTimer.ts` and `SubjectCycleState` models that are not yet wired into `FocusModeView.tsx`.
 - **Description:** Replace the legacy timer logic in the Focus view with the new hooks to accurately separate cycle time from excess accumulated time.
-- **Dependency:** Refactoring data models to unify `Subject/Topic` with `Theme`.
+- **Dependency:** Refactoring data models to unify `Subject/Topic` with `Theme`. (✅ Completed)
 - **Estimated impact:** High
 
 **FR-FUTURE-003 — Full Data Export/Import**
@@ -394,7 +457,7 @@ Provides visual dashboards for users to track their time investment, battle accu
 
 ---
 
-## 10. Acceptance Criteria Summary
+## 11. Acceptance Criteria Summary
 
 ### Study Cycle
 - [ ] User can create a subject with a specific time goal.

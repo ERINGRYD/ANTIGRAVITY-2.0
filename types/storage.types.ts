@@ -32,7 +32,9 @@ export interface StudySession {
   date: string; // ISO string
   subjectId: string;
   subjectName: string;
-  topicName: string; 
+  themeId: string | null;
+  topicId: string | null;
+  topicName?: string; 
   minutesStudied: number;
   questionsCompleted: number;
   accuracy: number;
@@ -69,9 +71,9 @@ export interface Subject {
   shortName: string; // Necessário para o DonutChart
   color: string;
   icon: string;
-  studiedMinutes: number;
-  totalMinutes: number; // Necessário para cálculos de progresso
-  topics: Topic[];
+  studiedMinutes?: number;
+  totalMinutes?: number; // Necessário para cálculos de progresso
+  topics?: Topic[];
   priority?: number;
   knowledgeLevel?: KnowledgeLevel;
 }

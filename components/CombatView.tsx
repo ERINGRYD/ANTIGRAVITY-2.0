@@ -12,7 +12,7 @@ interface CombatViewProps {
 }
 
 const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
-  const { userStats, isDarkMode, unifyTabsPreference, subjects, questions, studyHistory } = useApp();
+  const { userStats, isDarkMode, unifyTabsPreference, subjects, themes, questions, studyHistory } = useApp();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<'reconhecimento' | 'critica' | 'alerta' | 'todas'>('reconhecimento');
   const [showArchived, setShowArchived] = useState(false);
@@ -21,7 +21,17 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
   const [defeatedCount, setDefeatedCount] = useState(0);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ subject: subjectId ? subjects.find(s => s.id === subjectId)?.name || '' : '', status: '' });
+  const [filters, setFilters] = useState({ subject: '', status: '' });
+
+  // Initialize subject filter when subjects load if subjectId is provided
+  useEffect(() => {
+    if (subjectId && subjects?.length > 0 && !filters.subject) {
+      const subjectName = subjects.find(s => s.id === subjectId)?.name;
+      if (subjectName) {
+        setFilters(prev => ({ ...prev, subject: subjectName }));
+      }
+    }
+  }, [subjectId, subjects]);
 
   // Load defeated enemies count
   useEffect(() => {
@@ -80,11 +90,10 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
   useEffect(() => {
     const loadRooms = async () => {
       console.log('CombatView: Loading rooms...', { 
-        subjectsCount: subjects.length, 
-        questionsCount: questions.length,
+        subjectsCount: subjects?.length, 
+        themesCount: themes?.length,
+        questionsCount: questions?.length,
         subjectIdFilter: subjectId,
-        firstFewQuestions: questions.slice(0, 3).map(q => ({ id: q.id, subject: q.subject, topic: q.topic })),
-        firstFewSubjects: subjects.slice(0, 2).map(s => ({ id: s.id, name: s.name, topicsCount: s.topics.length }))
       });
 
       // Generate enemies from subjects, filtering only topics that have questions
@@ -92,24 +101,25 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
         ? subjects.filter(s => s.id === subjectId)
         : subjects;
 
-      const generatedEnemies = filteredSubjects.flatMap(subject => 
-        subject.topics
-          .filter(topic => {
-            const hasQuestions = questions.some(q => q.topic === topic.id);
+      const generatedEnemies = filteredSubjects.flatMap(subject => {
+        const subjectThemes = themes.filter(t => t.subjectId === subject.id);
+        return subjectThemes
+          .filter(theme => {
+            const hasQuestions = questions.some(q => q.topic === theme.id);
             return hasQuestions;
           })
-          .map(topic => ({
-            id: topic.id,
+          .map(theme => ({
+            id: theme.id,
             subject: subject.name,
-            name: topic.name,
-            level: Math.max(1, Math.ceil(topic.completedQuestions / 10) || 1),
+            name: theme.name,
+            level: 1, // Defaulting to 1 as completedQuestions is not in Theme
             room: 'reconhecimento', // Default, will be updated
-            status: topic.isCompleted ? 'Pronto' : 'Observando',
-            icon: topic.icon || subject.icon || 'radar',
+            status: theme.isCompleted ? 'Pronto' : 'Observando',
+            icon: subject.icon || 'radar',
             color: subject.color || 'blue',
             locked: false,
-          }))
-      );
+          }));
+      });
 
       console.log('CombatView: Generated enemies count:', generatedEnemies.length);
 
@@ -355,9 +365,13 @@ const CombatView: React.FC<CombatViewProps> = ({ onBack, subjectId }) => {
         <div className={`flex items-center ${isCollapsed ? 'flex-row lg:flex-col gap-4 justify-between lg:justify-center mb-0 lg:mb-6 w-full lg:w-auto' : 'justify-between mb-6'}`}>
           {!isCollapsed && (
             <div className="flex-1">
-              <button onClick={onBack} className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors lg:hidden">
-                <span className="material-symbols-outlined">arrow_back</span>
-                Voltar
+              {/* Back Button - Visible on all screens */}
+              <button 
+                onClick={onBack} 
+                className="mb-6 flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all shadow-sm active:scale-95 group"
+              >
+                <span className="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                Voltar para Batalha
               </button>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2 whitespace-nowrap">
                 <span className="material-symbols-outlined text-red-500 text-3xl">shield</span>

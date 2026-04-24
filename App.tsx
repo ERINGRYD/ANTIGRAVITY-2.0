@@ -27,6 +27,7 @@ import ImportJsonView from './components/ImportJsonView';
 import BattleSelectionHUD from './components/BattleSelectionHUD';
 import BattleQuestionView from './components/BattleQuestionView';
 import PomodoroSoundsView from './components/PomodoroSoundsView';
+import OnboardingTourModal from './components/OnboardingTourModal';
 import StudyPlannerWizard from './components/wizard/StudyPlannerWizard';
 import CycleCompleteModal from './components/CycleCompleteModal';
 import { ToastContainer } from './components/ToastContainer';
@@ -35,6 +36,9 @@ import { CycleStatsPage } from './components/stats/CycleStatsPage';
 import { StudySession as StatsStudySession, QuestionAttempt as StatsQuestionAttempt } from './types/stats.types';
 import { LogIn, Loader2 } from 'lucide-react';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+
+import { Theme } from './types/theme.types';
+import { SubjectCycleState } from './types/subjectCycle.types';
 
 import { KnowledgeLevel, calculateCombinedWeight } from './utils/priorityUtils';
 
@@ -46,48 +50,61 @@ import { resolveNextTheme } from './utils/themePriority';
 type Resolution = 
   | { action: 'empty' }
   | { action: 'cycle-complete' }
-  | { action: 'resume'; subject: Subject; topicId?: string }
-  | { action: 'start'; subject: Subject; topicId?: string };
+  | { action: 'resume'; subject: Subject; themeId?: string }
+  | { action: 'start'; subject: Subject; themeId?: string };
 
-function resolveNextSubject(subjects: Subject[], isAutoCycle: boolean): Resolution {
+function resolveNextSubject(
+  subjects: Subject[], 
+  themes: Theme[], 
+  cycleStates: SubjectCycleState[], 
+  isAutoCycle: boolean
+): Resolution {
   // 1. Empty check
   if (subjects.length === 0) {
     return { action: 'empty' };
   }
 
   // 2. All completed check
-  const allCompleted = subjects.every(s => s.studiedMinutes >= s.totalMinutes);
+  const allCompleted = subjects.every(s => {
+    const cs = cycleStates.find(state => state.subjectId === s.id);
+    return cs?.isRotationCompleted || false;
+  });
+  
   if (allCompleted) {
     return { action: 'cycle-complete' };
   }
 
   // 3. Find the first non-completed subject (respecting cycle order)
-  const nextSubject = subjects.find(s => s.studiedMinutes < s.totalMinutes);
+  const nextSubject = subjects.find(s => {
+    const cs = cycleStates.find(state => state.subjectId === s.id);
+    return !cs || !cs.isRotationCompleted;
+  });
 
   if (nextSubject) {
+    const cs = cycleStates.find(state => state.subjectId === nextSubject.id);
+    const subjectThemes = themes.filter(t => t.subjectId === nextSubject.id);
+    
     // 4. Active mid-session subject exists (Resume)
-    // If the subject has some progress but isn't finished, we resume it.
-    if (nextSubject.studiedMinutes > 0) {
-      const nextTheme = resolveNextTheme(nextSubject.topics, isAutoCycle);
+    if (cs && cs.currentCycleTime > 0) {
+      const nextTheme = resolveNextTheme(subjectThemes as any, isAutoCycle);
       return { 
         action: 'resume', 
         subject: nextSubject,
-        topicId: nextTheme ? nextTheme.id : undefined
+        themeId: nextTheme ? nextTheme.id : undefined
       };
     } 
     // 5. Fresh start or normal next subject (Start)
-    // If the subject has 0 progress, we start it fresh.
     else {
-      const nextTheme = resolveNextTheme(nextSubject.topics, isAutoCycle);
+      const nextTheme = resolveNextTheme(subjectThemes as any, isAutoCycle);
       return { 
         action: 'start', 
         subject: nextSubject,
-        topicId: nextTheme ? nextTheme.id : undefined
+        themeId: nextTheme ? nextTheme.id : undefined
       };
     }
   }
 
-  // Fallback (should be covered by step 2, but for safety)
+  // Fallback
   return { action: 'cycle-complete' };
 }
 
@@ -95,6 +112,8 @@ const App: React.FC = () => {
   const { user, loading, signInWithGoogle } = useAuth();
   const {
     subjects, setSubjects,
+    themes, setThemes,
+    cycleStates, setCycleStates,
     goals, setGoals,
     activeTab, setActiveTab,
     isAutoCycle, setIsAutoCycle,
@@ -104,8 +123,8 @@ const App: React.FC = () => {
     questions,
     addXP,
     addStudySession,
-    updateSubjectTopics,
-    isDarkMode, setIsDarkMode
+    isDarkMode, setIsDarkMode,
+    deleteSubject, deleteTopic
   } = useApp();
 
   // Reset sub-views and modals when tab changes
@@ -302,12 +321,12 @@ const App: React.FC = () => {
     setShowCycleCompleteModal(true);
   };
 
-  const handleStartStudy = (subjectId?: string, topicId?: string) => {
+  const handleStartStudy = (subjectId?: string, themeId?: string) => {
     // If a specific subject ID is provided (e.g. clicked from a card),
     // we respect that choice and start that specific subject.
     if (subjectId) {
       setFocusSubjectId(subjectId);
-      setFocusTopicId(topicId || null);
+      setFocusTopicId(themeId || null);
       setIsFocusMode(true);
       if (activeView !== 'main') {
         goBack();
@@ -316,7 +335,7 @@ const App: React.FC = () => {
     }
 
     // Otherwise, we resolve the next subject based on the cycle state.
-    const resolution = resolveNextSubject(subjects, isAutoCycle);
+    const resolution = resolveNextSubject(subjects, themes, cycleStates, isAutoCycle);
 
     switch (resolution.action) {
       case 'empty':
@@ -330,7 +349,7 @@ const App: React.FC = () => {
       case 'start':
         if (resolution.subject) {
           setFocusSubjectId(resolution.subject.id);
-          setFocusTopicId(resolution.topicId || null);
+          setFocusTopicId(resolution.themeId || null);
           setIsFocusMode(true);
           if (activeView !== 'main') {
             goBack();
@@ -379,6 +398,10 @@ const App: React.FC = () => {
     });
   };
 
+  const updateSubjectTopics = (subjectId: string, newTopics: Topic[]) => {
+    setSubjects(prev => prev.map(s => s.id === subjectId ? { ...s, topics: newTopics } : s));
+  };
+
   const renderMainContent = () => {
     if (activeTab === Tab.DETALHES && selectedSubject) {
       return (
@@ -394,7 +417,7 @@ const App: React.FC = () => {
       );
     }
     if (activeTab === Tab.INICIO) {
-      return <HomeView subjects={subjects} goals={goals} userStats={userStats} studyHistory={studyHistory} onStartStudy={handleStartStudy} onNavigateToTab={setActiveTab} />;
+      return <HomeView subjects={subjects} goals={goals} userStats={userStats} studyHistory={studyHistory} onStartStudy={handleStartStudy} onNavigateToTab={setActiveTab} onNavigateToManagement={() => navigateTo('management')} />;
     }
     if (activeTab === Tab.COLISEU) return (
       <ColiseumView 
@@ -429,8 +452,10 @@ const App: React.FC = () => {
           subjectId: s.subjectId,
           subjectName: s.subjectName || subject?.name || 'Desconhecida',
           subjectColor: subject?.color || '#94a3b8',
-          themeId: s.topicsCompleted?.[0] || null,
+          themeId: s.themeId || s.topicsCompleted?.[0] || null,
           themeName: s.topicName || null,
+          topicId: s.topicId || null,
+          topicName: s.topicName || undefined,
           startedAt: s.date,
           endedAt: new Date(new Date(s.date).getTime() + s.minutesStudied * 60000).toISOString(),
           durationMinutes: s.minutesStudied + (s.pauseMinutes || 0),
@@ -513,13 +538,27 @@ const App: React.FC = () => {
     if (activeTab === Tab.MAIS) return <MoreView onNavigateToTab={setActiveTab} />;
     if (activeTab === Tab.CONFIGURACOES) return <SettingsView onBack={() => setActiveTab(Tab.INICIO)} />;
     if (activeTab === Tab.BATALHA) {
-      return <BattleView ref={battleViewRef} subjects={subjects} goals={goals} onManageGoals={() => navigateTo('goalsManagement')} onSubjectClick={(id) => { setSelectedSubjectId(id); setActiveTab(Tab.DETALHES); }} onBattleSelectionClick={() => openModal('battleSelection')} onUpdateSubjects={setSubjects} />;
+      return <BattleView 
+        ref={battleViewRef} 
+        subjects={subjects} 
+        goals={goals} 
+        onManageGoals={() => navigateTo('goalsManagement')} 
+        onSubjectClick={(id) => { setSelectedSubjectId(id); setActiveTab(Tab.DETALHES); }} 
+        onBattleSelectionClick={() => openModal('battleSelection')} 
+        onUpdateSubjects={setSubjects}
+        onViewChange={(view) => {
+          if (view === 'battle') setActiveView('main');
+          else setActiveView(view as any);
+        }}
+      />;
     }
 
     // Default to Cycle View (Tab.CICLO)
     return (
       <CycleView
         subjects={displaySubjects}
+        themes={themes}
+        cycleStates={cycleStates}
         isAutoCycle={isAutoCycle}
         isEditMode={isEditMode}
         setIsEditMode={setIsEditMode}
@@ -731,7 +770,7 @@ const App: React.FC = () => {
           {activeView === 'notifications' && <NotificationsView onBack={goBack} />}
           {activeView === 'history' && <HistoryView subjects={subjects} studyHistory={studyHistory} userStats={userStats} onBack={goBack} />}
           {activeView === 'battleHistory' && <BattleHistoryView subjects={subjects} studyHistory={studyHistory} userStats={userStats} onBack={goBack} />}
-          {activeView === 'management' && <ManagementView subjects={subjects} onBack={goBack} onUpdate={setSubjects} />}
+          {activeView === 'management' && <ManagementView subjects={subjects} onBack={goBack} onUpdate={setSubjects} onDeleteSubject={deleteSubject} onDeleteTopic={deleteTopic} />}
           {activeView === 'goalsManagement' && <GoalsManagementView goals={goals} onBack={goBack} onUpdate={setGoals} />}
           {activeView === 'achievements' && <AchievementsView userStats={userStats} onBack={goBack} />}
           {activeView === 'battleQuestion' && battleSettings && (
@@ -749,10 +788,25 @@ const App: React.FC = () => {
           )}
           {activeView === 'sounds' && <PomodoroSoundsView onBack={goBack} />}
           
+          {showOnboarding && (
+            <OnboardingTourModal 
+              onClose={() => setShowOnboarding(false)} 
+              onNavigateToTab={setActiveTab}
+              onNavigateToManagement={() => navigateTo('management')}
+            />
+          )}
+
           {/* Header is now rendered for all tabs to provide menu access */}
           {!isTopicManagerOpen && !isAddingTopic && (
             <Header 
-              onBack={activeView !== 'main' ? goBack : undefined}
+              onBack={activeView !== 'main' ? () => {
+                if (activeTab === Tab.BATALHA && battleViewRef.current) {
+                  // If we are in Batalha tab, we might need to tell BattleView to go back
+                  goBack();
+                } else {
+                  goBack();
+                }
+              } : undefined}
               onAddSubject={activeTab === Tab.CICLO ? () => navigateTo('management') : undefined} 
               isAutoCycle={isAutoCycle} 
               setIsAutoCycle={setIsAutoCycle} 

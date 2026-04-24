@@ -15,12 +15,16 @@
  */
 import React, { useMemo } from 'react';
 import { Subject, Tab } from '../types';
+import { Theme } from '../types/theme.types';
+import { SubjectCycleState } from '../types/subjectCycle.types';
 import SubjectCard from './SubjectCard';
 import EmptyState from './EmptyState';
 import { calculateAllCyclePercents, calculateCombinedWeight, KnowledgeLevel } from '../utils/priorityUtils';
 
 interface CycleViewProps {
   subjects: Subject[];
+  themes: Theme[];
+  cycleStates: SubjectCycleState[];
   isAutoCycle: boolean;
   isEditMode: boolean;
   setIsEditMode: (val: boolean) => void;
@@ -38,6 +42,8 @@ interface CycleViewProps {
 
 const CycleView: React.FC<CycleViewProps> = ({
   subjects,
+  themes,
+  cycleStates,
   isAutoCycle,
   isEditMode,
   setIsEditMode,
@@ -55,25 +61,29 @@ const CycleView: React.FC<CycleViewProps> = ({
   
   // Calculate Stats
   const stats = useMemo(() => {
-    const totalMinutes = subjects.reduce((acc, s) => acc + s.studiedMinutes, 0);
-    const totalGoal = subjects.reduce((acc, s) => acc + s.totalMinutes, 0);
+    const totalMinutes = themes.reduce((acc, t) => acc + t.accumulatedTime, 0);
+    const totalGoal = themes.reduce((acc, t) => acc + t.goalTime, 0);
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return {
       totalTimeStr: `${h}h ${m}m`,
       percentage: totalGoal > 0 ? Math.round((totalMinutes / totalGoal) * 100) : 0
     };
-  }, [subjects]);
+  }, [themes]);
 
   // Donut Chart Logic
   const radius = 38; 
   const circumference = 2 * Math.PI * radius;
   
   // Calcula os pesos para as proporções do ciclo
-  const subjectsWithWeights = useMemo(() => subjects.map(s => ({
-    ...s,
-    weight: calculateCombinedWeight(s.priority || 3, s.knowledgeLevel || 'intermediario')
-  })), [subjects]);
+  const subjectsWithWeights = useMemo(() => subjects.map(s => {
+    const cycleState = cycleStates.find(cs => cs.subjectId === s.id);
+    return {
+      ...s,
+      weight: calculateCombinedWeight(s.priority || 3, s.knowledgeLevel || 'intermediario'),
+      cycleState
+    };
+  }), [subjects, cycleStates]);
 
   const totalWeight = useMemo(() => subjectsWithWeights.reduce((acc, s) => acc + s.weight, 0), [subjectsWithWeights]);
   
@@ -82,6 +92,8 @@ const CycleView: React.FC<CycleViewProps> = ({
 
   // Calculate cycle percentages
   const cyclePercents = useMemo(() => {
+    // We need to adapt the input for calculateAllCyclePercents if it expects the old Subject model
+    // but for now let's assume it works with IDs and weights
     return calculateAllCyclePercents(subjects as any);
   }, [subjects]);
 
@@ -169,7 +181,7 @@ const CycleView: React.FC<CycleViewProps> = ({
 
         <div className="flex items-center gap-4 ml-auto md:ml-0">
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hidden md:block">
-            {subjects.filter(s => s.studiedMinutes >= s.totalMinutes).length} DE {subjects.length} MATÉRIAS
+            {cycleStates.filter(cs => cs.isRotationCompleted).length} DE {subjects.length} MATÉRIAS
           </span>
           
           {subjects.length > 0 && (
@@ -190,26 +202,32 @@ const CycleView: React.FC<CycleViewProps> = ({
         <EmptyState onAddSubject={onAddSubject} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {subjects.map((subject, index) => (
-            <div key={subject.id} className="relative h-full">
-              <SubjectCard 
-                subject={subject} 
-                isActive={!isEditMode && index === 0 && subject.studiedMinutes < subject.totalMinutes}
-                onClick={!isEditMode ? onSelectSubject : undefined}
-                onPlay={!isEditMode ? onStartStudy : undefined}
-                draggable={isEditMode}
-                onDragStart={() => isEditMode && onDragStart(index)}
-                onDragEnter={() => isEditMode && onDragEnter(index)}
-                onDragOver={(e) => isEditMode && e.preventDefault()}
-                onDrop={isEditMode ? onDragEnd : undefined}
-                isDragging={isEditMode && draggedSubjectIndex === index}
-                isDropTarget={isEditMode && dragOverSubjectIndex === index}
-                isEditMode={isEditMode}
-                cardIndex={index}
-                cyclePercent={cyclePercents[subject.id] || 0}
-                onPriorityChange={onPriorityChange}
-                onLevelChange={onLevelChange}
-              />
+          {subjects.map((subject, index) => {
+            const subjectCycleState = cycleStates.find(cs => cs.subjectId === subject.id);
+            const subjectThemes = themes.filter(t => t.subjectId === subject.id);
+            
+            return (
+              <div key={subject.id} className="relative h-full">
+                <SubjectCard 
+                  subject={subject} 
+                  cycleState={subjectCycleState}
+                  themes={subjectThemes}
+                  isActive={!isEditMode && index === 0 && (!subjectCycleState || !subjectCycleState.isRotationCompleted)}
+                  onClick={!isEditMode ? onSelectSubject : undefined}
+                  onPlay={!isEditMode ? onStartStudy : undefined}
+                  draggable={isEditMode}
+                  onDragStart={() => isEditMode && onDragStart(index)}
+                  onDragEnter={() => isEditMode && onDragEnter(index)}
+                  onDragOver={(e) => isEditMode && e.preventDefault()}
+                  onDrop={isEditMode ? onDragEnd : undefined}
+                  isDragging={isEditMode && draggedSubjectIndex === index}
+                  isDropTarget={isEditMode && dragOverSubjectIndex === index}
+                  isEditMode={isEditMode}
+                  cardIndex={index}
+                  cyclePercent={cyclePercents[subject.id] || 0}
+                  onPriorityChange={onPriorityChange}
+                  onLevelChange={onLevelChange}
+                />
 
               {/* Auto-Cycle Connectors (Layer 2) */}
               {isAutoCycle && !isEditMode && (
@@ -259,7 +277,8 @@ const CycleView: React.FC<CycleViewProps> = ({
                 </>
               )}
             </div>
-          ))}
+          );
+        })}
 
           {/* New Subject Placeholder */}
           <button

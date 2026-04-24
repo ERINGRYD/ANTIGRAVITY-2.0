@@ -12,6 +12,7 @@ import CombatView from './CombatView';
 export interface BattleViewHandle {
   handleAddQuestion: () => void;
   handleOpenQuestionBank: () => void;
+  handleGoBack: () => void;
 }
 
 interface BattleViewProps {
@@ -22,6 +23,7 @@ interface BattleViewProps {
   onHistoryClick?: () => void;
   onSubjectClick?: (id: string) => void;
   onBattleSelectionClick?: () => void;
+  onViewChange?: (view: string) => void;
 }
 
 const initialQuestions: Question[] = [];
@@ -35,12 +37,21 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
   onUpdateSubjects, 
   onHistoryClick, 
   onSubjectClick,
-  onBattleSelectionClick
+  onBattleSelectionClick,
+  onViewChange
 }, ref) => {
   const { isDarkMode, questions, setQuestions, studyHistory } = useApp();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hoveredSubjectId, setHoveredSubjectId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'battle' | 'add_question' | 'question_bank' | 'manage_questions' | 'edit_question' | 'combat'>('battle');
+
+  // Sync internal view with parent if needed
+  useEffect(() => {
+    if (onViewChange) {
+      onViewChange(activeView);
+    }
+  }, [activeView, onViewChange]);
+
   const [isSelectingTopic, setIsSelectingTopic] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -51,6 +62,7 @@ const BattleView = forwardRef<BattleViewHandle, BattleViewProps>(({
   useImperativeHandle(ref, () => ({
     handleAddQuestion: () => handleAddClick(),
     handleOpenQuestionBank: () => setActiveView('question_bank'),
+    handleGoBack: () => setActiveView('battle'),
   }));
 
   const handleUpdateQuestion = (updatedQuestion: Partial<Question>) => {

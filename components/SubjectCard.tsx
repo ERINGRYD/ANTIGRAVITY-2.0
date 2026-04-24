@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { Subject as LegacySubject } from '../types/storage.types';
+import { Subject } from '../types/storage.types';
 import { SubjectCycleState } from '../types/subjectCycle.types';
 import { Theme } from '../types/theme.types';
 import { KnowledgeLevel } from '../utils/priorityUtils';
@@ -23,16 +23,10 @@ import CycleTimeIndicator from './CycleTimeIndicator';
 
 import { groupThemesByPriority, allSamePriority } from '../utils/themePriority';
 
-// Extend the legacy subject to support new fields if they exist, or just use it as is
-type Subject = LegacySubject & {
-  priority?: number;
-  knowledgeLevel?: KnowledgeLevel;
-};
-
 interface SubjectCardProps {
   subject: Subject;
-  cycleState?: SubjectCycleState;
-  themes?: Theme[];
+  cycleState: SubjectCycleState | undefined;
+  themes: Theme[];
   isActive: boolean;
   cardIndex?: number;
   isPermanentlyCompleted?: boolean;
@@ -126,35 +120,11 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
   onPriorityChange,
   onLevelChange
 }) => {
-  // 1. Derive Themes (Fallback to topics if themes not provided)
-  const effectiveThemes: Theme[] = themes || (subject.topics ? subject.topics.map(t => ({
-    id: t.id,
-    subjectId: subject.id,
-    name: t.name,
-    order: 0,
-    goalTime: t.totalMinutes,
-    priority: t.priority ?? 3,
-    accumulatedTime: t.studiedMinutes,
-    isCompleted: t.isCompleted,
-    completionSource: null,
-    subtopics: [],
-    description: t.description,
-    createdAt: '',
-    updatedAt: ''
-  })) : []);
+  // 1. Derive Themes
+  const effectiveThemes: Theme[] = themes;
 
-  // 2. Derive Cycle State (Fallback to subject stats if not provided)
-  const effectiveCycleState: SubjectCycleState = cycleState || {
-    subjectId: subject.id,
-    currentCycleTime: subject.studiedMinutes,
-    cycleGoalTime: subject.totalMinutes,
-    excessTime: Math.max(0, subject.studiedMinutes - subject.totalMinutes),
-    isRotationCompleted: subject.studiedMinutes >= subject.totalMinutes,
-    rotationIndex: 1,
-    activeThemeId: null,
-    startedAt: null,
-    completedAt: null
-  };
+  // 2. Derive Cycle State
+  const effectiveCycleState: SubjectCycleState | undefined = cycleState;
 
   // 3. Compute Derived Values
   const completedThemesCount = effectiveThemes.filter(t => t.isCompleted).length;
@@ -163,11 +133,11 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
     ? Math.round((completedThemesCount / totalThemesCount) * 100) 
     : 0;
 
-  const cycleProgressPercent = effectiveCycleState.cycleGoalTime > 0 
+  const cycleProgressPercent = (effectiveCycleState && effectiveCycleState.cycleGoalTime > 0)
     ? Math.round(Math.min(100, (effectiveCycleState.currentCycleTime / effectiveCycleState.cycleGoalTime) * 100))
     : 0;
     
-  const isRotationCompleted = effectiveCycleState.isRotationCompleted;
+  const isRotationCompleted = effectiveCycleState?.isRotationCompleted || false;
   
   // Determine if permanently completed (if not explicitly passed)
   const isPermanent = isPermanentlyCompleted ?? (totalThemesCount > 0 && completedThemesCount === totalThemesCount);
@@ -316,7 +286,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({
         </div>
 
         {/* Right Side: Cycle Progress (Circular) - Only if not permanently completed */}
-        {!isState4 && (
+        {!isState4 && effectiveCycleState && (
           <div className="flex flex-col items-center gap-1 pl-2 border-l border-slate-100 dark:border-slate-800">
              <CircularProgress 
                percentage={cycleProgressPercent} 

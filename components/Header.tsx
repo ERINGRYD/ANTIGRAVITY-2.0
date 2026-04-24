@@ -78,7 +78,7 @@ const Header: React.FC<HeaderProps> = ({
             <span className="material-icons-round text-xl">{icon}</span>
           </div>
           
-          <div className="hidden min-[400px]:block">
+          <div className="hidden md:block">
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{title}</h1>
             <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-0.5">{subtitle}</p>
           </div>
@@ -154,7 +154,7 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* User Profile */}
           <div className="flex items-center gap-3 pl-4 ml-2 border-l border-slate-100 dark:border-slate-800">
-            <div className="hidden sm:block text-right">
+            <div className="hidden md:block text-right">
               <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.displayName || 'Usuário'}</p>
               <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Estudante</p>
             </div>

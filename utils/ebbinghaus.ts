@@ -218,6 +218,20 @@ export function deleteArchivedEnemy(topicId: string): void {
 
 // Synchronous localStorage operation.
 // If migrating to async storage, add async/await at that time.
+export function deleteArchivedEnemiesBySubject(subjectId: string): void {
+  const current = getArchivedEnemies();
+  const enemiesToDelete = current.filter(e => e.subjectId === subjectId);
+  const updated = current.filter(e => e.subjectId !== subjectId);
+  localStorage.setItem('archived_enemies', JSON.stringify(updated));
+  
+  // Reset room states
+  enemiesToDelete.forEach(e => {
+    localStorage.setItem(`room_${e.topicId}`, 'reconhecimento');
+  });
+}
+
+// Synchronous localStorage operation.
+// If migrating to async storage, add async/await at that time.
 export function getArchivedEnemies(): ArchivedEnemy[] {
   try {
     return JSON.parse(localStorage.getItem('archived_enemies') ?? '[]');

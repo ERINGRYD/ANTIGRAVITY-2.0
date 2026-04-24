@@ -562,6 +562,8 @@ const BattleQuestionView: React.FC<BattleQuestionViewProps> = ({
     addStudySession({
       subjectId: sId,
       subjectName: sName,
+      themeId: primaryTopicId, // Use primaryTopicId as themeId
+      topicId: primaryTopicId,
       topicName: tName,
       minutesStudied: Math.ceil(totalSeconds / 60),
       questionsCompleted: results.accuracy.total,
